@@ -1,0 +1,8 @@
+aiogram==3.13.1
+web3==6.20.3
+SQLAlchemy==2.0.35
+aiosqlite==0.20.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+APScheduler==3.10.4
+python-dotenv==1.0.1

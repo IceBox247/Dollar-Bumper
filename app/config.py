@@ -1,0 +1,58 @@
+"""Application configuration, loaded from environment / .env."""
+from __future__ import annotations
+
+from decimal import Decimal
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
+    # Telegram
+    bot_token: str
+    # Stored as raw strings; parsed into lists via the properties below.
+    # (pydantic-settings JSON-parses list-typed env vars before validators run.)
+    admin_ids_raw: str = Field(default="", validation_alias="ADMIN_IDS")
+    proof_channel_id: str = ""
+    required_channels_raw: str = Field(default="", validation_alias="REQUIRED_CHANNELS")
+
+    # Chain
+    bsc_rpc_url: str = "https://bsc-dataseed.binance.org"
+    usdt_contract: str = "0x55d398326f99059fF775485246999027B3197955"
+    payout_wallet_address: str = ""
+    payout_wallet_private_key: str = ""
+    project_wallet_address: str = ""
+    explorer_tx_url: str = "https://bscscan.com/tx/"
+
+    # Economics (USDT)
+    referral_reward: Decimal = Decimal("0.01")
+    min_withdrawal: Decimal = Decimal("1.0")
+    review_threshold: Decimal = Decimal("5.0")
+    min_campaign_budget: Decimal = Decimal("10.0")
+
+    # Storage
+    database_url: str = "sqlite+aiosqlite:///data/dollar_bumper.db"
+
+    @property
+    def admin_ids(self) -> list[int]:
+        return [int(x.strip()) for x in self.admin_ids_raw.split(",") if x.strip().isdigit()]
+
+    @property
+    def required_channels(self) -> list[str]:
+        return [x.strip() for x in self.required_channels_raw.split(",") if x.strip()]
+
+    def is_admin(self, user_id: int) -> bool:
+        return user_id in self.admin_ids
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]
+
+
+settings = get_settings()
