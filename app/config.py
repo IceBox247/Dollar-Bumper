@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # Storage
     database_url: str = "sqlite+aiosqlite:///data/dollar_bumper.db"
 
+    # Webhook / serverless (Vercel)
+    webhook_secret: str = ""      # shared secret Telegram echoes back in a header
+    cron_secret: str = ""         # Vercel injects this as a Bearer token on cron calls
+    public_base_url: str = ""     # e.g. https://dollar-bumper.vercel.app
+
     @property
     def admin_ids(self) -> list[int]:
         return [int(x.strip()) for x in self.admin_ids_raw.split(",") if x.strip().isdigit()]

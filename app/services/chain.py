@@ -127,7 +127,9 @@ class Chain:
             return PaymentCheck(False, total, sender, f"Paid {total} USDT, below the required minimum.")
         return PaymentCheck(True, total, sender)
 
-    def _send_usdt_sync(self, to_address: str, amount: Decimal) -> str:
+    def _broadcast_usdt_sync(self, to_address: str, amount: Decimal) -> str:
+        """Sign & broadcast a USDT transfer and return the tx hash WITHOUT
+        waiting for the receipt (safe for short serverless timeouts)."""
         acct = self.w3.eth.account.from_key(settings.payout_wallet_private_key)
         to_address = Web3.to_checksum_address(to_address)
         units = self._to_units(amount)
@@ -143,10 +145,17 @@ class Chain:
         )
         signed = self.w3.eth.account.sign_transaction(tx, settings.payout_wallet_private_key)
         tx_hash = self.w3.eth.send_raw_transaction(signed.rawTransaction)
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
-        if receipt.get("status") != 1:
-            raise RuntimeError(f"Payout tx reverted: {tx_hash.hex()}")
         return tx_hash.hex()
+
+    def _tx_status_sync(self, tx_hash: str) -> str:
+        """Return 'success' | 'failed' | 'pending' for a broadcast tx."""
+        try:
+            receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+        except Exception:
+            return "pending"  # not mined yet (or not found)
+        if receipt is None:
+            return "pending"
+        return "success" if receipt.get("status") == 1 else "failed"
 
     # ── async wrappers (web3 is blocking; keep the event loop free) ──
     async def payout_balance(self) -> Decimal:
@@ -158,8 +167,11 @@ class Chain:
     async def verify_payment(self, tx_hash: str, expected_to: str, min_amount: Decimal) -> PaymentCheck:
         return await asyncio.to_thread(self._verify_payment_sync, tx_hash, expected_to, min_amount)
 
-    async def send_usdt(self, to_address: str, amount: Decimal) -> str:
-        return await asyncio.to_thread(self._send_usdt_sync, to_address, amount)
+    async def broadcast_usdt(self, to_address: str, amount: Decimal) -> str:
+        return await asyncio.to_thread(self._broadcast_usdt_sync, to_address, amount)
+
+    async def tx_status(self, tx_hash: str) -> str:
+        return await asyncio.to_thread(self._tx_status_sync, tx_hash)
 
 
 chain = Chain()

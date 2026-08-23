@@ -55,17 +55,29 @@ app/
 │   ├── ui.py           # message text
 │   ├── keyboards.py    # inline + reply keyboards
 │   ├── states.py       # FSM
+│   ├── storage.py      # DB-backed FSM storage (survives serverless invocations)
 │   └── handlers/       # start, wallet, tasks, referral, withdraw, advertiser, admin
-run.py                  # entrypoint
+├── runtime.py          # shared bot/dispatcher; process_update + confirm
+api/
+├── webhook.py          # Vercel: Telegram webhook function
+└── cron.py             # Vercel: payout-confirmation cron function
+scripts/
+├── init_db.py          # create tables (run once)
+└── set_webhook.py      # register/delete the Telegram webhook
+run.py                  # long-polling entrypoint (always-on hosts)
+vercel.json             # functions + cron config
 ```
 
 ## Setup
 
 1. **Create the bot** with [@BotFather](https://t.me/BotFather) and copy the token.
-2. **Create a proof/payments channel**, add the bot as an **admin** (post rights).
+2. **Create channels** and add the bot as an **admin** of each:
+   - [@dollarbumperpayout](https://t.me/dollarbumperpayout) — payout proof feed (`PROOF_CHANNEL_ID`)
+   - [@dollarbumper](https://t.me/dollarbumper) — join-gate channel (`REQUIRED_CHANNELS`)
 3. **Fund a hot wallet** with USDT (for payouts) + a little BNB (for gas).
    Keep only what you can afford to expose — sweep excess to cold storage.
-4. Configure and run:
+
+### Option A — always-on host (Railway / Render / VPS) — long polling
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -74,6 +86,48 @@ pip install -r requirements.txt
 cp .env.example .env      # then fill in real values
 python run.py
 ```
+
+### Option B — Vercel (serverless webhook)
+
+Vercel can't run a long-lived poller or wait on a tx receipt, so this project
+ships a **webhook** function + a **cron** confirmer and uses **Postgres**.
+
+**1. Database (Postgres).** Create a free DB (Neon / Supabase / Vercel Postgres)
+and set `DATABASE_URL`, e.g.
+`postgresql+asyncpg://USER:PASS@HOST/DB?sslmode=require`.
+
+**2. Import the repo into Vercel.** In the import screen set
+**Framework Preset → Other** (not "Python"), leave the root directory as `./`.
+The functions in `api/` are deployed automatically.
+
+**3. Environment variables** (Vercel → Project → Settings → Environment Variables):
+add everything from `.env.example` — `BOT_TOKEN`, `ADMIN_IDS`,
+`PROOF_CHANNEL_ID`, `REQUIRED_CHANNELS`, wallet keys, economics, `DATABASE_URL`,
+`WEBHOOK_SECRET` (any long random string), `PUBLIC_BASE_URL`
+(`https://<your-app>.vercel.app`), and `CRON_SECRET` (any random string —
+Vercel sends it to `/api/cron`).
+
+**4. Create the tables once** (locally, pointing at the prod DB):
+
+```bash
+DATABASE_URL="postgresql+asyncpg://…?sslmode=require" python -m scripts.init_db
+```
+
+**5. Deploy**, then register the webhook (locally, with the same env):
+
+```bash
+python -m scripts.set_webhook          # -> https://<app>.vercel.app/api/webhook
+```
+
+Visit `https://<app>.vercel.app/api/webhook` — it should say
+*"Dollar Bumper webhook is up."* Message your bot and you're live.
+
+> **Hobby-plan note:** Vercel Cron runs only **once/day** on Hobby and functions
+> cap at **10s**. That's fine here: payouts are *broadcast* instantly (well under
+> 10s) and *confirmed* both by the daily cron **and opportunistically on user
+> traffic**, so proof posts/notifications land as soon as anyone uses the bot.
+> Upgrade to Pro and lower the cron `schedule` in `vercel.json` for near-instant
+> confirmation.
 
 ## Configuration (`.env`)
 

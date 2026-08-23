@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -101,3 +102,16 @@ class ProcessedTx(Base):
 
     tx_hash: Mapped[str] = mapped_column(String(80), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class FSMRecord(Base):
+    """Persisted FSM state + data so multi-step flows survive serverless
+    invocations (no in-memory storage between requests)."""
+    __tablename__ = "fsm_records"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    state: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )

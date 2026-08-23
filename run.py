@@ -1,17 +1,20 @@
-"""Dollar Bumper — entrypoint. Run with:  python run.py"""
+"""Dollar Bumper — long-polling entrypoint (for always-on hosts).
+
+    python run.py
+
+For serverless (Vercel), use the api/ webhook + cron functions instead.
+"""
 from __future__ import annotations
 
 import asyncio
 import logging
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.bot.handlers import register_handlers
 from app.config import settings
 from app.db.base import init_db
+from app.runtime import get_bot, get_dispatcher
+from app.services.payouts import confirm_payouts
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,12 +26,13 @@ log = logging.getLogger("dollar_bumper")
 async def main() -> None:
     await init_db()
 
-    bot = Bot(
-        token=settings.bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
-    dp = Dispatcher(storage=MemoryStorage())
-    register_handlers(dp)
+    bot = get_bot()
+    dp = get_dispatcher()
+
+    # Confirm broadcast payouts every 30s (post proof, notify, refund on revert).
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(confirm_payouts, "interval", seconds=30, args=[bot], max_instances=1)
+    scheduler.start()
 
     me = await bot.get_me()
     log.info("Starting Dollar Bumper as @%s (id=%s)", me.username, me.id)

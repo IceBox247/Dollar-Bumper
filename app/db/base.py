@@ -1,7 +1,13 @@
-"""Async SQLAlchemy engine, session factory, and schema init."""
+"""Async SQLAlchemy engine, session factory, and schema init.
+
+Supports SQLite (local/always-on) and Postgres (serverless). For Postgres it
+uses asyncpg with a NullPool so each serverless invocation opens/closes its own
+connection cleanly, and honours `sslmode=require` in the URL.
+"""
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import (
@@ -10,6 +16,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -19,7 +26,6 @@ class Base(DeclarativeBase):
 
 
 def _ensure_sqlite_dir(url: str) -> None:
-    """Create the parent directory for a file-based SQLite DB if needed."""
     prefix = "sqlite+aiosqlite:///"
     if url.startswith(prefix):
         path = url[len(prefix):]
@@ -27,15 +33,46 @@ def _ensure_sqlite_dir(url: str) -> None:
             Path(os.path.dirname(path) or ".").mkdir(parents=True, exist_ok=True)
 
 
-_ensure_sqlite_dir(settings.database_url)
+def _build_engine():
+    url = settings.database_url
+    kwargs: dict = {"echo": False, "future": True}
 
-engine = create_async_engine(settings.database_url, echo=False, future=True)
+    if url.startswith("postgres"):
+        # Normalize to the asyncpg driver.
+        if "+asyncpg" not in url:
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        # asyncpg doesn't understand libpq's ?sslmode=; translate it.
+        if "sslmode=require" in url or "ssl=true" in url:
+            kwargs["connect_args"] = {"ssl": True}
+        url = re.sub(r"[?&]sslmode=require", "", url)
+        url = re.sub(r"[?&]ssl=true", "", url)
+        # Fresh connection per invocation — safe for serverless.
+        kwargs["poolclass"] = NullPool
+    else:
+        _ensure_sqlite_dir(url)
+
+    return create_async_engine(url, **kwargs)
+
+
+engine = _build_engine()
 Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+_initialized = False
 
 
 async def init_db() -> None:
-    # Import models so they register on Base.metadata before create_all.
-    from app.db import models  # noqa: F401
+    """Create tables if missing. Idempotent."""
+    from app.db import models  # noqa: F401  (register models on Base.metadata)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def ensure_initialized() -> None:
+    """Run schema init at most once per process (for serverless cold starts)."""
+    global _initialized
+    if _initialized:
+        return
+    await init_db()
+    _initialized = True
