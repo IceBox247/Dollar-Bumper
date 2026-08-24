@@ -150,12 +150,37 @@ async def complete_onboarding(u: WebAppUser, bot: Bot) -> dict:
     for ch in settings.required_channels:
         if not await is_member(bot, ch, u.id):
             return {"ok": False, "error": "Please join all channels first.", "need_channels": True}
+
+    credited_to: int | None = None
+    credited_amt = q(settings.referral_reward)
     async with Session() as s:
         user = await s.get(User, u.id)
         if user is None:
             return {"ok": False, "error": "User not found."}
         user.onboarded = True
+
+        # Credit the referrer once, now that this account is fully verified.
+        if user.referred_by and not user.referral_credited:
+            referrer = await s.get(User, user.referred_by)
+            same_ip = bool(user.signup_ip and referrer and user.signup_ip == referrer.signup_ip)
+            if referrer is not None and not referrer.is_banned and not same_ip:
+                referrer.balance = q(referrer.balance + credited_amt)
+                referrer.total_earned = q(referrer.total_earned + credited_amt)
+                referrer.referral_earned = q(referrer.referral_earned + credited_amt)
+                credited_to = referrer.id
+            # Mark done either way so a self-referral isn't re-checked forever.
+            user.referral_credited = True
         await s.commit()
+
+    if credited_to:
+        try:
+            await bot.send_message(
+                credited_to,
+                f"🎉 A friend you invited just joined Dollar Bumper — "
+                f"<b>{usdt(credited_amt)}</b> added to your balance!",
+            )
+        except Exception:  # noqa: BLE001
+            pass
     return {"ok": True}
 
 
