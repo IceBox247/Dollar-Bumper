@@ -42,11 +42,17 @@ def _build_engine():
         if "+asyncpg" not in url:
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        connect_args: dict = {}
         # asyncpg doesn't understand libpq's ?sslmode=; translate it.
         if "sslmode=require" in url or "ssl=true" in url:
-            kwargs["connect_args"] = {"ssl": True}
+            connect_args["ssl"] = True
         url = re.sub(r"[?&]sslmode=require", "", url)
         url = re.sub(r"[?&]ssl=true", "", url)
+        url = re.sub(r"[?&]channel_binding=require", "", url)
+        # Disable prepared-statement caching so the pooled (PgBouncer) Neon /
+        # Supabase connection string works too, not just the direct one.
+        connect_args["statement_cache_size"] = 0
+        kwargs["connect_args"] = connect_args
         # Fresh connection per invocation — safe for serverless.
         kwargs["poolclass"] = NullPool
     else:
