@@ -326,9 +326,10 @@ async function api(action, extra){
 function fmt(n){ let x=parseFloat(n||'0'); let s=x.toFixed(x<1?4:2); if(s.indexOf('.')>-1)s=s.replace(/0+$/,'').replace(/\.$/,'.00'); return s; }
 function usdt(n){ return fmt(n)+' USDT'; }
 
-async function loadHome(){
-  const d = await api('home');
-  if(!d.ok){ toast(d.error||'Could not load'); return; }
+function cacheGet(){ try{ return JSON.parse(localStorage.getItem('db_home')||'null'); }catch(e){ return null; } }
+function cacheSet(d){ try{ localStorage.setItem('db_home', JSON.stringify(d)); }catch(e){} }
+
+function applyHome(d){
   STATE = d;
   document.getElementById('balance').innerHTML = fmt(d.balance)+'<small> USDT</small>';
   document.getElementById('earned').textContent = fmt(d.total_earned);
@@ -341,12 +342,17 @@ async function loadHome(){
   document.getElementById('refEarned2').textContent = usdt(d.referral_earned);
   document.getElementById('wBalance').textContent = usdt(d.balance);
   document.getElementById('wMin').textContent = usdt(d.config.min_withdrawal);
-  // device / anti multi-account status
   const tile=document.getElementById('deviceTile');
   if(d.device_ok){ tile.className='tile green'; document.getElementById('deviceIc').textContent='🛡️';
     document.getElementById('deviceTxt').textContent='Verified'; }
   else{ tile.className='tile amber'; document.getElementById('deviceIc').textContent='⚠️';
     document.getElementById('deviceTxt').textContent='Under review'; }
+}
+
+async function loadHome(){
+  const d = await api('home');
+  if(!d.ok){ toast(d.error||'Could not load'); return; }
+  applyHome(d); cacheSet(d);
   if(!d.onboarded){ showOnboarding(); }
 }
 
@@ -525,7 +531,12 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'
 if(!initData){
   document.querySelector('.wrap').innerHTML =
     '<div class="empty" style="padding-top:120px"><img src="/app/logo.png" style="width:96px;height:96px;border-radius:50%;box-shadow:0 0 30px rgba(40,224,122,.5);margin-bottom:18px"><div style="font-size:16px;color:#eafaef;font-weight:700">Open from Telegram</div><div style="margin-top:6px">Launch this from the Dollar Bumper bot to sign in.</div></div>';
-}else{ loadHome(); }
+}else{
+  // Instant paint from last-known state, then refresh in the background.
+  const cached = cacheGet();
+  if(cached && cached.onboarded){ applyHome(cached); }
+  loadHome();
+}
 </script>
 </body>
 </html>

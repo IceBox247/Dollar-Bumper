@@ -19,6 +19,11 @@ def app_url() -> str:
     return f"{base}/app/" if base else ""
 
 
+def app_banner_url() -> str:
+    base = (settings.public_base_url or "").rstrip("/")
+    return f"{base}/app/welcome.jpg" if base else ""
+
+
 def open_app_inline() -> InlineKeyboardMarkup | None:
     url = app_url()
     if not url:

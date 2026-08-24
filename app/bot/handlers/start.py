@@ -26,9 +26,18 @@ def _parse_ref(text: str | None) -> int | None:
 
 async def _send_home(message: Message, user_id: int, first_name: str | None) -> None:
     is_admin = settings.is_admin(user_id)
-    await message.answer(
-        ui.welcome(first_name), reply_markup=kb.main_menu(is_admin),
-    )
+    caption = ui.welcome(first_name)
+    banner = kb.app_banner_url()
+    sent = False
+    if banner:
+        try:
+            await message.answer_photo(banner, caption=caption, reply_markup=kb.main_menu(is_admin))
+            sent = True
+        except Exception:  # noqa: BLE001
+            sent = False
+    if not sent:
+        await message.answer(caption, reply_markup=kb.main_menu(is_admin))
+
     inline = kb.open_app_inline()
     if inline:
         await message.answer(

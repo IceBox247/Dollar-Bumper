@@ -80,6 +80,22 @@ async def _run() -> dict:
             out["steps"]["menu_button"] = {"ok": True, "app_url": app_url}
     except Exception as e:  # noqa: BLE001
         out["steps"]["menu_button"] = {"ok": False, "error": str(e)[:200]}
+
+    # 4) Bot description ("What can this bot do?") + short description
+    try:
+        await bot.set_my_description(description=(
+            "💵 Dollar Bumper — earn real USDT on Telegram.\n\n"
+            "🚀 Complete quick tasks, invite friends, and get paid on-chain — "
+            "no conditions.\n"
+            "📢 Projects: feature your channel to real, engaged users.\n\n"
+            "Tap Start to open the app 👇"
+        ))
+        await bot.set_my_short_description(short_description=(
+            "Earn real USDT — tasks, referrals, instant on-chain withdrawals."
+        ))
+        out["steps"]["description"] = {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        out["steps"]["description"] = {"ok": False, "error": str(e)[:200]}
     finally:
         await bot.session.close()
 
