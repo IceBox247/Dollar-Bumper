@@ -7,8 +7,9 @@ from aiogram import Bot
 from sqlalchemy import func, select
 
 from app.config import settings
+from app.constants import WithdrawalStatus
 from app.db.base import Session
-from app.db.models import Campaign, User
+from app.db.models import Campaign, User, Withdrawal
 from app.services.campaigns import active_campaigns_for
 from app.services.earning import complete_task, get_or_create_user
 from app.services.membership import is_member
@@ -77,6 +78,54 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
             "min_campaign_budget": _q(settings.min_campaign_budget),
             "network": "BEP20 (BSC)",
         },
+    }
+
+
+def _name(first, username) -> str:
+    return (first or (("@" + username) if username else None) or "Bumper")[:24]
+
+
+async def leaderboard(u: WebAppUser) -> dict:
+    async with Session() as s:
+        # Top referrers — by number of valid (credited) invites.
+        inv = (
+            select(User.referred_by.label("ref"), func.count().label("cnt"))
+            .where(User.referred_by.is_not(None), User.referral_credited.is_(True))
+            .group_by(User.referred_by)
+            .subquery()
+        )
+        ref_rows = (await s.execute(
+            select(User.id, User.first_name, User.username, inv.c.cnt, User.referral_earned)
+            .join(inv, inv.c.ref == User.id)
+            .order_by(inv.c.cnt.desc(), User.referral_earned.desc())
+            .limit(30)
+        )).all()
+
+        # Top withdrawals — by all-time PAID amount.
+        wd = (
+            select(Withdrawal.user_id.label("uid"), func.sum(Withdrawal.amount).label("tot"))
+            .where(Withdrawal.status == WithdrawalStatus.PAID.value)
+            .group_by(Withdrawal.user_id)
+            .subquery()
+        )
+        wd_rows = (await s.execute(
+            select(User.id, User.first_name, User.username, wd.c.tot)
+            .join(User, User.id == wd.c.uid)
+            .order_by(wd.c.tot.desc())
+            .limit(30)
+        )).all()
+
+    return {
+        "ok": True,
+        "top_referrers": [
+            {"name": _name(r[1], r[2]), "invites": int(r[3] or 0),
+             "earned": _q(r[4]), "me": r[0] == u.id}
+            for r in ref_rows
+        ],
+        "top_withdrawals": [
+            {"name": _name(r[1], r[2]), "total": _q(r[3]), "me": r[0] == u.id}
+            for r in wd_rows
+        ],
     }
 
 

@@ -63,21 +63,39 @@
     background:linear-gradient(90deg,var(--gold1),var(--gold2));padding:5px 11px;border-radius:999px}
 
   /* quick-action tiles */
-  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-  .tile{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;
-    padding:16px 15px 15px;cursor:pointer;overflow:hidden;transition:transform .08s;backdrop-filter:blur(10px)}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tile{position:relative;border-radius:20px;padding:16px;cursor:pointer;overflow:hidden;transition:transform .08s;
+    min-height:124px;display:flex;flex-direction:column;border:1px solid var(--line);
+    background:linear-gradient(158deg,rgba(20,52,32,.92),rgba(6,24,14,.86))}
   .tile:active{transform:scale(.97)}
-  .tile:before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
-  .tile.gold:before{background:linear-gradient(90deg,var(--gold1),var(--gold2))}
-  .tile.green:before{background:linear-gradient(90deg,var(--green),var(--green2))}
-  .tile.amber:before{background:linear-gradient(90deg,#ffb84d,#ff8c00)}
-  .tile.gold{box-shadow:0 12px 30px -20px rgba(244,196,48,.6)}
-  .tile.green{box-shadow:0 12px 30px -20px var(--glow)}
-  .tile .ic{font-size:25px;display:block;line-height:1}
-  .tile .t{font-size:14.5px;font-weight:800;margin-top:9px}
-  .tile .d{font-size:11px;color:var(--sub);margin-top:2px}
+  .tile:after{content:"";position:absolute;right:-26px;bottom:-26px;width:96px;height:96px;border-radius:50%}
+  .tile .tile-ic{width:48px;height:48px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .tile .t{font-size:15.5px;font-weight:800;margin-top:auto;padding-top:12px}
+  .tile .d{font-size:11.5px;color:var(--sub);margin-top:3px;font-weight:600}
+  .tile.gold{border-color:rgba(244,196,48,.32)}
+  .tile.gold .tile-ic{background:linear-gradient(135deg,rgba(247,214,78,.28),rgba(212,160,23,.12));box-shadow:inset 0 0 18px rgba(244,196,48,.22)}
+  .tile.gold:after{background:radial-gradient(circle,rgba(244,196,48,.16),transparent 70%)}
+  .tile.green{border-color:rgba(40,224,122,.3)}
+  .tile.green .tile-ic{background:linear-gradient(135deg,rgba(40,224,122,.26),rgba(18,184,95,.12));box-shadow:inset 0 0 18px rgba(40,224,122,.22)}
+  .tile.green:after{background:radial-gradient(circle,rgba(40,224,122,.18),transparent 70%)}
   .tile.green .d{color:var(--green)}
+  .tile.amber{border-color:rgba(255,184,77,.35)}
+  .tile.amber .tile-ic{background:rgba(255,184,77,.16)}
   .tile.amber .d{color:#ffb84d}
+
+  /* segmented control + leaderboard */
+  .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:5px;margin-bottom:14px}
+  .seg button{flex:1;border:none;background:none;color:var(--sub);font-weight:800;font-size:12.5px;padding:11px;border-radius:10px;font-family:inherit;cursor:pointer;transition:.2s}
+  .seg button.on{background:linear-gradient(100deg,var(--gold1),var(--gold2));color:#241a00}
+  .lb-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px 14px;margin-bottom:9px}
+  .lb-row.me{border-color:var(--line2);box-shadow:0 0 0 1px rgba(244,196,48,.35)}
+  .lb-rank{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;background:rgba(255,255,255,.06);flex-shrink:0}
+  .lb-rank.g1{background:linear-gradient(135deg,#ffe38a,#d4a017);color:#241a00}
+  .lb-rank.g2{background:linear-gradient(135deg,#eef2f7,#aab6c4);color:#1a2230}
+  .lb-rank.g3{background:linear-gradient(135deg,#e6a86b,#b5702f);color:#241a00}
+  .lb-name{font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb-val{font-weight:900;font-size:14px;color:var(--gold1);flex-shrink:0}
+  .lb-sub{font-size:11px;color:var(--sub)}
 
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:14px;
     padding:15px;font-size:15px;font-weight:800;cursor:pointer;transition:transform .07s,filter .2s;font-family:inherit;margin-top:11px}
@@ -99,9 +117,9 @@
   .nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
     display:flex;gap:4px;background:rgba(6,26,15,.82);backdrop-filter:blur(16px);
     border:1px solid var(--line);border-radius:20px;padding:7px;box-shadow:0 14px 40px -12px rgba(0,0,0,.8);z-index:40}
-  .nav button{background:none;border:none;color:var(--sub);font-size:10.5px;font-weight:700;display:flex;
-    flex-direction:column;align-items:center;gap:3px;padding:8px 16px;border-radius:14px;cursor:pointer;font-family:inherit;transition:.18s}
-  .nav button .ic{font-size:19px}
+  .nav button{background:none;border:none;color:var(--sub);font-size:10px;font-weight:700;display:flex;
+    flex-direction:column;align-items:center;gap:3px;padding:8px 11px;border-radius:14px;cursor:pointer;font-family:inherit;transition:.18s}
+  .nav button .ic{font-size:18px}
   .nav button.active{color:#0a2413;background:linear-gradient(100deg,var(--gold1),var(--gold2));box-shadow:0 6px 18px -6px rgba(244,196,48,.6)}
 
   .empty{text-align:center;color:var(--sub);padding:44px 20px;font-size:14px}
@@ -172,16 +190,16 @@
     <div class="sec">Quick Actions</div>
     <div class="tiles">
       <div class="tile gold" onclick="go('tasks')">
-        <span class="ic">📋</span><div class="t">Earn Tasks</div><div class="d">Complete &amp; get paid</div>
+        <div class="tile-ic">📋</div><div class="t">Earn Tasks</div><div class="d">Complete &amp; get paid</div>
       </div>
       <div class="tile green" onclick="go('invite')">
-        <span class="ic">👥</span><div class="t">Invite &amp; Earn</div><div class="d">USDT per friend</div>
+        <div class="tile-ic">👥</div><div class="t">Invite &amp; Earn</div><div class="d">USDT per friend</div>
       </div>
       <div class="tile gold" onclick="go('withdraw')">
-        <span class="ic">💸</span><div class="t">Withdraw</div><div class="d">Cash out on-chain</div>
+        <div class="tile-ic">💸</div><div class="t">Withdraw</div><div class="d">Cash out on-chain</div>
       </div>
       <div class="tile green" id="deviceTile" onclick="deviceInfo()">
-        <span class="ic" id="deviceIc">🛡️</span><div class="t">Device</div><div class="d" id="deviceTxt">Checking…</div>
+        <div class="tile-ic" id="deviceIc">🛡️</div><div class="t">Device</div><div class="d" id="deviceTxt">Checking…</div>
       </div>
     </div>
 
@@ -227,13 +245,24 @@
     </div>
     <p class="empty" style="font-size:12px;padding:14px">🧾 Every real payout is posted publicly with a BscScan link.</p>
   </div>
+
+  <!-- RANKS / LEADERBOARD -->
+  <div id="tab-ranks" class="hidden">
+    <div class="sec">🏆 Leaderboard</div>
+    <div class="seg">
+      <button id="segRef" class="on" onclick="lbTab('ref')">👥 Top Referrers</button>
+      <button id="segWd" onclick="lbTab('wd')">💸 Top Withdrawn</button>
+    </div>
+    <div id="lbList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+  </div>
 </div>
 
 <div class="nav">
   <button data-tab="home" class="active" onclick="go('home')"><span class="ic">🏠</span>Home</button>
   <button data-tab="tasks" onclick="go('tasks')"><span class="ic">📋</span>Tasks</button>
+  <button data-tab="ranks" onclick="go('ranks')"><span class="ic">🏆</span>Ranks</button>
   <button data-tab="invite" onclick="go('invite')"><span class="ic">👥</span>Invite</button>
-  <button data-tab="withdraw" onclick="go('withdraw')"><span class="ic">💸</span>Withdraw</button>
+  <button data-tab="withdraw" onclick="go('withdraw')"><span class="ic">💸</span>Cash</button>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -410,13 +439,43 @@ async function doWithdraw(){
   b.disabled=false; b.innerHTML='💸 Withdraw';
 }
 function go(tab){
-  ['home','tasks','invite','withdraw'].forEach(t=>{
+  ['home','tasks','ranks','invite','withdraw'].forEach(t=>{
     const el=document.getElementById('tab-'+t); el.classList.toggle('hidden', t!==tab);
     if(t===tab){ el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade'); }
   });
   document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
   if(tab==='tasks') loadTasks();
+  if(tab==='ranks'){ lbData=null; loadLeaderboard(); }
   window.scrollTo(0,0);
+}
+
+/* ---- Leaderboard ---- */
+let lbData=null, lbMode='ref';
+async function loadLeaderboard(){
+  const box=document.getElementById('lbList');
+  const d=await api('leaderboard');
+  if(!d.ok){ box.innerHTML='<div class="empty">Could not load leaderboard.</div>'; return; }
+  lbData=d; renderLb();
+}
+function lbTab(m){ lbMode=m;
+  document.getElementById('segRef').classList.toggle('on',m==='ref');
+  document.getElementById('segWd').classList.toggle('on',m==='wd'); renderLb(); }
+function renderLb(){
+  const box=document.getElementById('lbList'); if(!lbData) return;
+  const rows = lbMode==='ref' ? lbData.top_referrers : lbData.top_withdrawals;
+  if(!rows.length){ box.innerHTML='<div class="empty"><div class="big">🏆</div>No one on the board yet.<br>Be the first!</div>'; return; }
+  box.innerHTML='';
+  rows.forEach((r,i)=>{
+    const rank=i+1, g=rank<=3?('g'+rank):'';
+    const medal=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+    const val = lbMode==='ref' ? r.invites+' ref' : usdt(r.total);
+    const sub = lbMode==='ref' ? usdt(r.earned)+' earned' : 'all-time withdrawn';
+    const el=document.createElement('div'); el.className='lb-row'+(r.me?' me':'');
+    el.innerHTML=`<div class="lb-rank ${g}">${medal}</div>
+      <div style="flex:1;min-width:0"><div class="lb-name">${escapeHtml(r.name)}${r.me?' · You':''}</div><div class="lb-sub">${sub}</div></div>
+      <div class="lb-val">${val}</div>`;
+    box.appendChild(el);
+  });
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
