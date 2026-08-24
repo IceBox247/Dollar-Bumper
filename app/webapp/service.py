@@ -160,10 +160,11 @@ async def complete_onboarding(u: WebAppUser, bot: Bot) -> dict:
         user.onboarded = True
 
         # Credit the referrer once, now that this account is fully verified.
+        # Blocked only if THIS account is flagged (over the per-IP allowance),
+        # so genuine same-network referrals within the allowance still count.
         if user.referred_by and not user.referral_credited:
             referrer = await s.get(User, user.referred_by)
-            same_ip = bool(user.signup_ip and referrer and user.signup_ip == referrer.signup_ip)
-            if referrer is not None and not referrer.is_banned and not same_ip:
+            if referrer is not None and not referrer.is_banned and not user.flagged:
                 referrer.balance = q(referrer.balance + credited_amt)
                 referrer.total_earned = q(referrer.total_earned + credited_amt)
                 referrer.referral_earned = q(referrer.referral_earned + credited_amt)
