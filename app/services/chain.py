@@ -64,13 +64,29 @@ class Chain:
     """Thin wrapper around a BSC web3 connection for USDT payouts and verification."""
 
     def __init__(self) -> None:
-        self.w3 = Web3(Web3.HTTPProvider(settings.bsc_rpc_url, request_kwargs={"timeout": 30}))
-        # BSC is a PoA chain — needed to decode its block headers.
-        self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-        self.usdt = self.w3.eth.contract(
-            address=Web3.to_checksum_address(settings.usdt_contract), abi=ERC20_ABI
-        )
+        # Lazy: nothing here can crash at import time even if config is off,
+        # so a misconfig surfaces as a handled error at call time, not a
+        # total bot outage.
+        self._w3: Web3 | None = None
+        self._usdt = None
         self._decimals: int | None = None
+
+    @property
+    def w3(self) -> Web3:
+        if self._w3 is None:
+            w3 = Web3(Web3.HTTPProvider(settings.bsc_rpc_url, request_kwargs={"timeout": 30}))
+            # BSC is a PoA chain — needed to decode its block headers.
+            w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            self._w3 = w3
+        return self._w3
+
+    @property
+    def usdt(self):
+        if self._usdt is None:
+            self._usdt = self.w3.eth.contract(
+                address=Web3.to_checksum_address(settings.usdt_contract), abi=ERC20_ABI
+            )
+        return self._usdt
 
     # ── helpers ────────────────────────────────────────────────
     def _dec(self) -> int:

@@ -15,6 +15,14 @@ _DECIMAL_DEFAULTS = {
     "min_campaign_budget": Decimal("10.0"),
 }
 
+# Fallbacks for string settings that must never be empty.
+_STR_DEFAULTS = {
+    "bsc_rpc_url": "https://bsc-dataseed.binance.org",
+    "usdt_contract": "0x55d398326f99059fF775485246999027B3197955",
+    "explorer_tx_url": "https://bscscan.com/tx/",
+    "database_url": "sqlite+aiosqlite:///data/dollar_bumper.db",
+}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -68,6 +76,16 @@ class Settings(BaseSettings):
         if v is None:
             return _DECIMAL_DEFAULTS[info.field_name]
         return v
+
+    @field_validator(
+        "bsc_rpc_url", "usdt_contract", "explorer_tx_url", "database_url",
+        mode="before",
+    )
+    @classmethod
+    def _blank_str_to_default(cls, v, info):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return _STR_DEFAULTS[info.field_name]
+        return v.strip() if isinstance(v, str) else v
 
     @property
     def admin_ids(self) -> list[int]:
