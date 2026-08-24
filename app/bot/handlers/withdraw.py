@@ -18,7 +18,14 @@ router = Router(name="withdraw")
 
 
 @router.message(F.text == kb.BTN_WITHDRAW)
-async def withdraw_panel(message: Message) -> None:
+async def withdraw_panel(message: Message, bot: Bot) -> None:
+    # Finalize any in-flight payouts so statuses/proofs are up to date.
+    try:
+        from app.services.payouts import confirm_payouts
+
+        await confirm_payouts(bot, limit=5)
+    except Exception:  # noqa: BLE001
+        pass
     u = message.from_user
     user = await get_or_create_user(u.id, u.username, u.first_name, None)
     balance_ok = user.balance >= settings.min_withdrawal and bool(user.wallet_address)
@@ -44,7 +51,7 @@ async def withdraw_custom(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()
 
 
-@router.message(WithdrawStates.waiting_amount, F.text)
+@router.message(WithdrawStates.waiting_amount, F.text, ~F.text.startswith("/"))
 async def withdraw_amount(message: Message, bot: Bot, state: FSMContext) -> None:
     raw = (message.text or "").strip().replace(",", ".").replace("USDT", "").strip()
     try:

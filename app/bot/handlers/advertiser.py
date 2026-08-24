@@ -35,7 +35,7 @@ async def adv_new(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()
 
 
-@router.message(AdvertiseStates.title, F.text)
+@router.message(AdvertiseStates.title, F.text, ~F.text.startswith("/"))
 async def adv_title(message: Message, state: FSMContext) -> None:
     await state.update_data(title=message.text.strip()[:128])
     await state.set_state(AdvertiseStates.channel)
@@ -45,7 +45,7 @@ async def adv_title(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(AdvertiseStates.channel, F.text)
+@router.message(AdvertiseStates.channel, F.text, ~F.text.startswith("/"))
 async def adv_channel(message: Message, state: FSMContext) -> None:
     channel = normalize_channel(message.text)
     if not channel:
@@ -58,7 +58,7 @@ async def adv_channel(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(AdvertiseStates.reward, F.text)
+@router.message(AdvertiseStates.reward, F.text, ~F.text.startswith("/"))
 async def adv_reward(message: Message, state: FSMContext) -> None:
     reward = _parse_amount(message.text)
     if reward is None or reward <= 0:
@@ -72,7 +72,7 @@ async def adv_reward(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(AdvertiseStates.budget, F.text)
+@router.message(AdvertiseStates.budget, F.text, ~F.text.startswith("/"))
 async def adv_budget(message: Message, state: FSMContext) -> None:
     budget = _parse_amount(message.text)
     if budget is None or budget < settings.min_campaign_budget:
@@ -120,7 +120,7 @@ async def adv_cancel(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()
 
 
-@router.message(AdvertiseStates.waiting_tx, F.text)
+@router.message(AdvertiseStates.waiting_tx, F.text, ~F.text.startswith("/"))
 async def adv_tx_pasted(message: Message, state: FSMContext) -> None:
     tx = message.text.strip()
     if not is_valid_tx_hash(tx):

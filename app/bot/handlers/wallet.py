@@ -30,7 +30,7 @@ async def ask_wallet(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()
 
 
-@router.message(WalletStates.waiting_address, F.text)
+@router.message(WalletStates.waiting_address, F.text, ~F.text.startswith("/"))
 async def save_wallet(message: Message, state: FSMContext) -> None:
     address = (message.text or "").strip()
     if not is_valid_evm_address(address):

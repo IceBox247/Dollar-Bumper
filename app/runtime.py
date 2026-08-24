@@ -38,18 +38,11 @@ def get_dispatcher() -> Dispatcher:
 
 
 async def process_update(data: dict) -> None:
-    """Handle one Telegram update (webhook payload)."""
+    """Handle one Telegram update (webhook payload). Kept lean so cold starts
+    stay under the serverless timeout — payout confirmation runs via cron and
+    when a user opens Wallet/Withdraw, not on every message."""
     await ensure_initialized()
     bot, dp = get_bot(), get_dispatcher()
-
-    # Piggyback payout confirmation on traffic (cheap when nothing is pending).
-    try:
-        from app.services.payouts import confirm_payouts
-
-        await confirm_payouts(bot, limit=3)
-    except Exception:  # noqa: BLE001
-        log.exception("opportunistic confirm failed")
-
     update = Update.model_validate(data, context={"bot": bot})
     await dp.feed_update(bot, update)
 
