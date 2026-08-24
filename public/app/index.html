@@ -319,9 +319,13 @@ function haptic(t){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.notificati
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
 async function api(action, extra){
-  const r = await fetch('/api/app',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify(Object.assign({action, initData}, extra||{}))});
-  return r.json();
+  try{
+    const r = await fetch('/api/app',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify(Object.assign({action, initData}, extra||{}))});
+    return await r.json();
+  }catch(e){
+    return {ok:false, error:'network'};
+  }
 }
 function fmt(n){ let x=parseFloat(n||'0'); let s=x.toFixed(x<1?4:2); if(s.indexOf('.')>-1)s=s.replace(/0+$/,'').replace(/\.$/,'.00'); return s; }
 function usdt(n){ return fmt(n)+' USDT'; }
@@ -416,12 +420,17 @@ async function loadChannels(){
   });
 }
 async function verifyChannels(){
-  const b=document.getElementById('chBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Checking…';
+  const b=document.getElementById('chBtn');
+  b.disabled=true; b.innerHTML='<span class="spin"></span> Checking…';
+  toast('Checking your channels…');
   const d = await api('channels');
-  await loadChannels();
   b.disabled=false; b.innerHTML='✅ I\'ve Joined';
-  if(d.ok && d.all_joined){ haptic('success'); gotoWelcome(); }
-  else{ haptic('error'); toast('Please join all channels first, then tap again.'); }
+  if(d && d.ok && d.all_joined){ haptic('success'); gotoWelcome(); return; }
+  await loadChannels();
+  haptic('error');
+  if(!d || d.error==='network'){ toast('Network hiccup — tap again in a second.'); return; }
+  const missing = (d.channels||[]).filter(c=>!c.joined).map(c=>c.username).join(', ');
+  toast(missing ? ('Not detected in: '+missing) : 'Please join all channels, then tap again.');
 }
 function gotoWelcome(){
   document.getElementById('ob-ip').classList.add('hidden');
