@@ -7,101 +7,125 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root{
-    --bg:#0b0f17; --card:#141a26; --card2:#1b2333; --line:#243048;
-    --txt:#eaf0fb; --sub:#93a3c0; --accent:#f5c542; --accent2:#3b82f6;
-    --green:#34d399; --red:#f87171;
+    --bg0:#03150c; --bg1:#062512; --card:rgba(12,38,22,.72); --card2:rgba(18,52,31,.6);
+    --line:rgba(52,211,133,.16); --line2:rgba(244,196,48,.28);
+    --txt:#eafaef; --sub:#8fb5a0;
+    --gold1:#f7d64e; --gold2:#d4a017; --green:#28e07a; --green2:#12b85f; --red:#ff6b6b;
+    --glow:rgba(40,224,122,.55);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    padding:0 0 90px;min-height:100vh}
-  .wrap{max-width:520px;margin:0 auto;padding:16px}
-  .brand{display:flex;align-items:center;gap:10px;padding:8px 4px 14px}
-  .brand .logo{font-size:26px}
-  .brand h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
-  .brand .tag{margin-left:auto;font-size:11px;color:var(--sub);background:var(--card);
-    border:1px solid var(--line);padding:5px 10px;border-radius:999px}
+  html,body{background:var(--bg0);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{min-height:100vh;padding:0 0 100px;position:relative;overflow-x:hidden}
+  body:before,body:after{content:"";position:fixed;border-radius:50%;filter:blur(70px);z-index:-1;pointer-events:none}
+  body:before{width:340px;height:340px;background:radial-gradient(circle,rgba(40,224,122,.30),transparent 70%);top:-120px;right:-100px}
+  body:after{width:300px;height:300px;background:radial-gradient(circle,rgba(244,196,48,.14),transparent 70%);top:180px;left:-120px}
+  .wrap{max-width:520px;margin:0 auto;padding:14px 16px}
 
-  .balance-card{background:linear-gradient(135deg,#1c2437,#0f1626);border:1px solid var(--line);
-    border-radius:20px;padding:22px;position:relative;overflow:hidden}
-  .balance-card:before{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;
-    background:radial-gradient(circle,rgba(245,197,66,.18),transparent 70%)}
-  .balance-card .lbl{font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em}
-  .balance-card .amt{font-size:38px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
-  .balance-card .amt small{font-size:16px;color:var(--sub);font-weight:600}
-  .balance-card .row{display:flex;gap:18px;margin-top:16px}
-  .balance-card .row .k{font-size:11px;color:var(--sub)}
-  .balance-card .row .v{font-size:15px;font-weight:700;margin-top:2px}
+  /* header */
+  .brand{display:flex;align-items:center;gap:12px;padding:10px 2px 18px}
+  .brand .logo{width:46px;height:46px;border-radius:50%;object-fit:cover;
+    box-shadow:0 0 0 2px rgba(40,224,122,.35),0 0 22px var(--glow)}
+  .brand .name{font-size:18px;font-weight:900;letter-spacing:.02em;line-height:1;
+    background:linear-gradient(180deg,#fff,#cfeeda);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand .name span{display:block;font-size:10.5px;font-weight:800;letter-spacing:.34em;
+    background:linear-gradient(90deg,var(--gold1),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:3px}
+  .brand .chip{margin-left:auto;font-size:10.5px;font-weight:800;color:#0a2413;
+    background:linear-gradient(90deg,var(--green),var(--green2));padding:6px 11px;border-radius:999px;
+    box-shadow:0 4px 16px rgba(40,224,122,.35)}
 
-  .section-title{font-size:13px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;
-    margin:22px 4px 10px;font-weight:700}
+  /* balance hero */
+  .hero{position:relative;border-radius:24px;padding:24px 22px;overflow:hidden;
+    background:linear-gradient(160deg,rgba(18,52,31,.9),rgba(6,26,15,.92));
+    border:1px solid var(--line2);box-shadow:0 18px 50px -20px rgba(0,0,0,.7),inset 0 0 40px rgba(40,224,122,.06)}
+  .hero:before{content:"";position:absolute;right:-30px;top:-30px;width:170px;height:170px;
+    background:radial-gradient(circle,rgba(244,196,48,.22),transparent 70%)}
+  .hero .lbl{font-size:11px;letter-spacing:.16em;color:var(--sub);font-weight:800;text-transform:uppercase}
+  .hero .amt{font-size:44px;font-weight:900;letter-spacing:-.02em;margin-top:6px;line-height:1;
+    background:linear-gradient(90deg,var(--gold1),#ffe9a0 55%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .amt small{font-size:16px;color:var(--sub);font-weight:700;-webkit-text-fill-color:var(--sub)}
+  .hero .badge{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:11px;font-weight:800;
+    color:var(--green);background:rgba(40,224,122,.12);border:1px solid rgba(40,224,122,.3);padding:5px 11px;border-radius:999px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:16px}
+  .stat{background:rgba(3,18,10,.5);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+  .stat .k{font-size:10px;color:var(--sub);font-weight:700;letter-spacing:.04em}
+  .stat .v{font-size:16px;font-weight:900;margin-top:3px}
 
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
-  .card h3{font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
-  .card p{font-size:13px;color:var(--sub);line-height:1.5}
-  .reward-pill{margin-left:auto;background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.3);
-    font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px}
+  .sec{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.14em;font-weight:800;margin:22px 4px 11px}
 
-  .btn{display:block;width:100%;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;
-    cursor:pointer;transition:transform .07s ease;font-family:inherit;margin-top:10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;
+    backdrop-filter:blur(10px);box-shadow:0 10px 30px -18px rgba(0,0,0,.8)}
+  .card h3{font-size:15px;font-weight:800;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+  .card p{font-size:13px;color:var(--sub);line-height:1.55}
+  .card p b{color:var(--txt)}
+  .reward{margin-left:auto;font-size:13px;font-weight:900;color:#0a2413;
+    background:linear-gradient(90deg,var(--gold1),var(--gold2));padding:5px 11px;border-radius:999px}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:14px;
+    padding:15px;font-size:15px;font-weight:800;cursor:pointer;transition:transform .07s,filter .2s;font-family:inherit;margin-top:11px}
   .btn:active{transform:scale(.98)}
-  .btn.primary{background:linear-gradient(135deg,var(--accent),#e0a92e);color:#1a1400}
-  .btn.blue{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff}
+  .btn.gold{background:linear-gradient(100deg,var(--gold1),var(--gold2));color:#241a00;box-shadow:0 8px 24px -8px rgba(244,196,48,.55)}
+  .btn.green{background:linear-gradient(100deg,var(--green),var(--green2));color:#052312;box-shadow:0 8px 24px -8px var(--glow)}
   .btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
-  .btn.sm{padding:11px;font-size:14px}
-  .btn:disabled{opacity:.5}
+  .btn.sm{padding:12px;font-size:14px}
+  .btn:disabled{opacity:.55}
 
-  .input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;
-    padding:14px;color:var(--txt);font-size:15px;font-family:inherit;margin-top:8px}
-  .input::placeholder{color:#5f6f8c}
-  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
+  .input{width:100%;background:rgba(3,18,10,.6);border:1px solid var(--line);border-radius:13px;
+    padding:15px;color:var(--txt);font-size:15px;font-family:inherit;margin-top:10px;outline:none}
+  .input:focus{border-color:rgba(40,224,122,.5)}
+  .input::placeholder{color:#5c7a68}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all;color:var(--txt)}
+  .link-box{background:rgba(3,18,10,.6);border:1px dashed var(--line2);border-radius:13px;padding:13px;
+    font-size:12px;color:var(--gold1);word-break:break-all;margin-top:10px}
 
-  .link-box{background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:12px;
-    font-size:12px;color:var(--sub);word-break:break-all;margin-top:8px}
+  .nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
+    display:flex;gap:4px;background:rgba(6,26,15,.82);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:20px;padding:7px;box-shadow:0 14px 40px -12px rgba(0,0,0,.8);z-index:40}
+  .nav button{background:none;border:none;color:var(--sub);font-size:10.5px;font-weight:700;display:flex;
+    flex-direction:column;align-items:center;gap:3px;padding:8px 16px;border-radius:14px;cursor:pointer;font-family:inherit;transition:.18s}
+  .nav button .ic{font-size:19px}
+  .nav button.active{color:#0a2413;background:linear-gradient(100deg,var(--gold1),var(--gold2));box-shadow:0 6px 18px -6px rgba(244,196,48,.6)}
 
-  .nav{position:fixed;bottom:0;left:0;right:0;background:rgba(13,18,28,.92);backdrop-filter:blur(12px);
-    border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
-  .nav button{background:none;border:none;color:var(--sub);font-size:11px;font-weight:600;display:flex;
-    flex-direction:column;align-items:center;gap:3px;padding:6px 14px;border-radius:12px;cursor:pointer;font-family:inherit}
-  .nav button .ic{font-size:20px}
-  .nav button.active{color:var(--accent)}
-  .nav button.active .ic{transform:translateY(-1px)}
-
-  .empty{text-align:center;color:var(--sub);padding:40px 20px;font-size:14px}
-  .empty .big{font-size:40px;margin-bottom:10px}
+  .empty{text-align:center;color:var(--sub);padding:44px 20px;font-size:14px}
+  .empty .big{font-size:44px;margin-bottom:12px}
   .hidden{display:none}
-  .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#0f1626;border:1px solid var(--line);
-    color:var(--txt);padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;
-    pointer-events:none;z-index:50;max-width:90%;text-align:center}
-  .toast.show{opacity:1}
-  .skeleton{background:linear-gradient(90deg,#141a26,#1b2333,#141a26);background-size:200% 100%;
-    animation:sk 1.2s infinite;border-radius:12px;height:16px;margin:8px 0}
+  .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:rgba(6,26,15,.96);
+    border:1px solid var(--line2);color:var(--txt);padding:13px 18px;border-radius:14px;font-size:14px;font-weight:700;
+    opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;max-width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  .skeleton{background:linear-gradient(90deg,rgba(18,52,31,.4),rgba(40,224,122,.12),rgba(18,52,31,.4));
+    background-size:200% 100%;animation:sk 1.2s infinite;border-radius:14px;height:74px;margin-bottom:12px}
   @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
-  .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
-    border-radius:50%;animation:rot .7s linear infinite;vertical-align:-2px}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(0,0,0,.25);border-top-color:#0a2413;
+    border-radius:50%;animation:rot .7s linear infinite}
   @keyframes rot{to{transform:rotate(360deg)}}
+  .fade{animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand">
-    <span class="logo">💵</span>
-    <h1>Dollar Bumper</h1>
-    <span class="tag" id="netTag">BEP20</span>
+    <img class="logo" src="/app/logo.png" alt="Dollar Bumper" />
+    <div class="name">DOLLAR<span>BUMPER</span></div>
+    <span class="chip">⛓ BEP20</span>
   </div>
 
   <!-- HOME -->
-  <div id="tab-home">
-    <div class="balance-card">
-      <div class="lbl">Balance</div>
+  <div id="tab-home" class="fade">
+    <div class="hero">
+      <div class="lbl">Available Balance</div>
       <div class="amt" id="balance">—<small> USDT</small></div>
-      <div class="row">
-        <div><div class="k">Total earned</div><div class="v" id="earned">—</div></div>
-        <div><div class="k">From referrals</div><div class="v" id="refEarned">—</div></div>
-        <div><div class="k">Invites</div><div class="v" id="invites">—</div></div>
+      <div class="badge">⚡ Paid on-chain · no conditions</div>
+      <div class="stats">
+        <div class="stat"><div class="k">Total earned</div><div class="v" id="earned">—</div></div>
+        <div class="stat"><div class="k">Referrals</div><div class="v" id="refEarned">—</div></div>
+        <div class="stat"><div class="k">Invites</div><div class="v" id="invites">—</div></div>
       </div>
     </div>
 
-    <div class="section-title">Your wallet</div>
+    <div class="sec">Your Wallet</div>
     <div class="card">
       <h3>⛓️ USDT (BEP20)</h3>
       <p class="mono" id="walletAddr">Not set</p>
@@ -109,45 +133,44 @@
       <button class="btn ghost sm" id="walletBtn" onclick="toggleWallet()">✏️ Set / Update Wallet</button>
     </div>
 
-    <div class="section-title">Quick actions</div>
-    <button class="btn primary" onclick="go('tasks')">📋 Earn Tasks</button>
-    <button class="btn blue" onclick="go('invite')">👥 Invite &amp; Earn</button>
+    <div class="sec">Quick Actions</div>
+    <button class="btn gold" onclick="go('tasks')">📋 Earn Tasks</button>
+    <button class="btn green" onclick="go('invite')">👥 Invite &amp; Earn</button>
     <button class="btn ghost" onclick="go('withdraw')">💸 Withdraw</button>
   </div>
 
   <!-- TASKS -->
   <div id="tab-tasks" class="hidden">
-    <div class="section-title">Earn Tasks</div>
-    <div id="tasksList"><div class="skeleton"></div><div class="skeleton" style="width:70%"></div></div>
+    <div class="sec">Earn Tasks</div>
+    <div id="tasksList"><div class="skeleton"></div><div class="skeleton"></div></div>
   </div>
 
   <!-- INVITE -->
   <div id="tab-invite" class="hidden">
-    <div class="section-title">Invite &amp; Earn</div>
+    <div class="sec">Invite &amp; Earn</div>
     <div class="card">
       <h3>🚀 Earn real USDT</h3>
-      <p>You receive <b id="refRewardTxt">—</b> for every friend who joins and completes their first task.</p>
+      <p>Get <b id="refRewardTxt">—</b> for every friend who joins and completes their first task.</p>
       <div class="link-box" id="refLink">—</div>
-      <button class="btn primary" onclick="shareLink()">📤 Share Invite Link</button>
+      <button class="btn gold" onclick="shareLink()">📤 Share Invite Link</button>
       <button class="btn ghost sm" onclick="copyLink()">📋 Copy Link</button>
     </div>
     <div class="card">
-      <h3>📊 Your referrals</h3>
+      <h3>📊 Your Referrals</h3>
       <p>Valid invites: <b id="invites2">—</b><br>Referral earnings: <b id="refEarned2">—</b></p>
     </div>
   </div>
 
   <!-- WITHDRAW -->
   <div id="tab-withdraw" class="hidden">
-    <div class="section-title">Withdraw</div>
+    <div class="sec">Withdraw</div>
     <div class="card">
-      <h3>💸 Cash out</h3>
-      <p>Balance: <b id="wBalance">—</b><br>Minimum: <b id="wMin">—</b> · Network: BEP20 (BSC)<br>
-      Under <b id="wThresh">—</b> pays instantly; larger amounts get a quick review.</p>
+      <h3>💸 Cash Out</h3>
+      <p>Balance: <b id="wBalance">—</b><br>Minimum: <b id="wMin">—</b> · Network: BEP20 (BSC)</p>
       <input class="input" id="amountInput" inputmode="decimal" placeholder="Amount in USDT (blank = all)" />
-      <button class="btn primary" id="wBtn" onclick="doWithdraw()">💸 Withdraw</button>
+      <button class="btn gold" id="wBtn" onclick="doWithdraw()">💸 Withdraw</button>
     </div>
-    <p class="empty" style="font-size:12px">Every real payout is posted publicly with a BscScan link.</p>
+    <p class="empty" style="font-size:12px;padding:14px">🧾 Every real payout is posted publicly with a BscScan link.</p>
   </div>
 </div>
 
@@ -161,20 +184,19 @@
 
 <script>
 const tg = window.Telegram ? window.Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#0b0f17'); }
+if (tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#03150c');tg.setBackgroundColor('#03150c');}catch(e){} }
 const initData = tg ? tg.initData : '';
 let STATE = null;
 
 function haptic(t){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t); }catch(e){} }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
-
 async function api(action, extra){
   const r = await fetch('/api/app',{method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify(Object.assign({action, initData}, extra||{}))});
   return r.json();
 }
-function fmt(n){ const x=parseFloat(n||'0'); return x.toFixed(x<1?4:2).replace(/0+$/,'').replace(/\.$/,'.00'); }
+function fmt(n){ let x=parseFloat(n||'0'); let s=x.toFixed(x<1?4:2); if(s.indexOf('.')>-1)s=s.replace(/0+$/,'').replace(/\.$/,'.00'); return s; }
 function usdt(n){ return fmt(n)+' USDT'; }
 
 async function loadHome(){
@@ -182,8 +204,8 @@ async function loadHome(){
   if(!d.ok){ toast(d.error||'Could not load'); return; }
   STATE = d;
   document.getElementById('balance').innerHTML = fmt(d.balance)+'<small> USDT</small>';
-  document.getElementById('earned').textContent = usdt(d.total_earned);
-  document.getElementById('refEarned').textContent = usdt(d.referral_earned);
+  document.getElementById('earned').textContent = fmt(d.total_earned);
+  document.getElementById('refEarned').textContent = fmt(d.referral_earned);
   document.getElementById('invites').textContent = d.invites;
   document.getElementById('walletAddr').textContent = d.wallet || 'Not set';
   document.getElementById('refRewardTxt').textContent = usdt(d.config.referral_reward);
@@ -192,40 +214,34 @@ async function loadHome(){
   document.getElementById('refEarned2').textContent = usdt(d.referral_earned);
   document.getElementById('wBalance').textContent = usdt(d.balance);
   document.getElementById('wMin').textContent = usdt(d.config.min_withdrawal);
-  document.getElementById('wThresh').textContent = usdt(d.config.review_threshold);
 }
-
 async function loadTasks(){
   const box=document.getElementById('tasksList');
   const d = await api('tasks');
   if(!d.ok){ box.innerHTML='<div class="empty">Could not load tasks.</div>'; return; }
-  if(!d.tasks.length){ box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now. Check back soon or invite friends!</div>'; return; }
+  if(!d.tasks.length){ box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now.<br>Check back soon or invite friends!</div>'; return; }
   box.innerHTML='';
   d.tasks.forEach(t=>{
-    const c=document.createElement('div'); c.className='card';
-    c.innerHTML=`<h3>📢 ${escapeHtml(t.title)} <span class="reward-pill">${usdt(t.reward)}</span></h3>
+    const c=document.createElement('div'); c.className='card fade';
+    c.innerHTML=`<h3>📢 ${escapeHtml(t.title)} <span class="reward">${usdt(t.reward)}</span></h3>
       ${t.description?`<p>${escapeHtml(t.description)}</p>`:''}
       <p>Join <b>${escapeHtml(t.channel)}</b>, then verify.</p>
       <button class="btn ghost sm" onclick="openChannel('${t.url}')">📢 Open Channel</button>
-      <button class="btn primary sm" id="v${t.id}" onclick="verify(${t.id})">✅ Verify &amp; Claim</button>`;
+      <button class="btn green sm" id="v${t.id}" onclick="verify(${t.id})">✅ Verify &amp; Claim</button>`;
     box.appendChild(c);
   });
 }
-
 function openChannel(url){ tg ? tg.openTelegramLink(url) : window.open(url,'_blank'); }
-
 async function verify(id){
   const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Checking…';
   const d = await api('verify',{campaign_id:id});
   if(d.ok){ haptic('success'); toast('✅ Verified! '+usdt(d.reward)+' added'); await loadHome(); await loadTasks(); }
   else{ haptic('error'); toast(d.error||'Not verified'); b.disabled=false; b.innerHTML='✅ Verify &amp; Claim'; }
 }
-
 function toggleWallet(){
   const inp=document.getElementById('walletInput'); const btn=document.getElementById('walletBtn');
   if(inp.classList.contains('hidden')){ inp.classList.remove('hidden'); inp.value=(STATE&&STATE.wallet)||'';
-    btn.textContent='💾 Save Wallet'; inp.focus(); }
-  else{ saveWallet(); }
+    btn.textContent='💾 Save Wallet'; inp.focus(); } else { saveWallet(); }
 }
 async function saveWallet(){
   const inp=document.getElementById('walletInput'); const btn=document.getElementById('walletBtn');
@@ -234,12 +250,10 @@ async function saveWallet(){
     btn.textContent='✏️ Set / Update Wallet'; await loadHome(); }
   else{ haptic('error'); toast(d.error||'Invalid address'); }
 }
-
 function copyLink(){ const l=STATE?STATE.referral_link:''; navigator.clipboard.writeText(l).then(()=>toast('📋 Link copied')); }
 function shareLink(){ const l=STATE?STATE.referral_link:'';
   const u='https://t.me/share/url?url='+encodeURIComponent(l)+'&text='+encodeURIComponent('Earn real USDT with Dollar Bumper! 👇');
   tg ? tg.openTelegramLink(u) : window.open(u,'_blank'); }
-
 async function doWithdraw(){
   const b=document.getElementById('wBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Processing…';
   const amt=document.getElementById('amountInput').value.trim();
@@ -248,10 +262,10 @@ async function doWithdraw(){
   else{ haptic('error'); toast(d.error||d.message||'Failed'); }
   b.disabled=false; b.innerHTML='💸 Withdraw';
 }
-
 function go(tab){
   ['home','tasks','invite','withdraw'].forEach(t=>{
-    document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
+    const el=document.getElementById('tab-'+t); el.classList.toggle('hidden', t!==tab);
+    if(t===tab){ el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade'); }
   });
   document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
   if(tab==='tasks') loadTasks();
@@ -261,10 +275,8 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'
 
 if(!initData){
   document.querySelector('.wrap').innerHTML =
-    '<div class="empty"><div class="big">🔒</div>Open this from inside Telegram via the bot to sign in.</div>';
-}else{
-  loadHome();
-}
+    '<div class="empty" style="padding-top:120px"><img src="/app/logo.png" style="width:96px;height:96px;border-radius:50%;box-shadow:0 0 30px rgba(40,224,122,.5);margin-bottom:18px"><div style="font-size:16px;color:#eafaef;font-weight:700">Open from Telegram</div><div style="margin-top:6px">Launch this from the Dollar Bumper bot to sign in.</div></div>';
+}else{ loadHome(); }
 </script>
 </body>
 </html>
