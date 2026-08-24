@@ -98,6 +98,13 @@ async def complete_task(user_id: int, campaign_id: int) -> TaskResult:
         # Referral: credit the referrer once, on the user's FIRST completed task.
         if user.referred_by and not user.referral_credited:
             referrer = await s.get(User, user.referred_by)
+            same_ip = bool(
+                user.signup_ip and referrer and user.signup_ip == referrer.signup_ip
+            )
+            if same_ip:
+                # Same device/IP as the referrer → self-referral, don't pay.
+                user.referral_credited = True  # don't re-check later
+                referrer = None
             if referrer is not None and not referrer.is_banned:
                 bonus = q(settings.referral_reward)
                 referrer.balance = q(referrer.balance + bonus)

@@ -16,7 +16,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-async def _dispatch(action: str, data: dict) -> dict:
+async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
     from app.db.base import ensure_initialized
     from app.webapp import service
     from app.webapp.api import get_bot
@@ -31,7 +31,7 @@ async def _dispatch(action: str, data: dict) -> dict:
     bot = get_bot()
 
     if action == "home":
-        return await service.home_state(user, bot)
+        return await service.home_state(user, bot, ip)
     if action == "tasks":
         return await service.tasks_list(user)
     if action == "verify":
@@ -44,13 +44,17 @@ async def _dispatch(action: str, data: dict) -> dict:
 
 
 class handler(BaseHTTPRequestHandler):
+    def _client_ip(self) -> str | None:
+        xff = self.headers.get("x-forwarded-for") or self.headers.get("x-real-ip") or ""
+        return xff.split(",")[0].strip() or None if xff else None
+
     def do_POST(self) -> None:  # noqa: N802
         from app.webapp.api import read_json_body
 
         data = read_json_body(self.rfile, self.headers)
         action = (data.get("action") or "").strip()
         try:
-            result = asyncio.run(_dispatch(action, data))
+            result = asyncio.run(_dispatch(action, data, self._client_ip()))
         except Exception as e:  # noqa: BLE001
             print("app api error:", repr(e))
             self._json(500, {"ok": False, "error": "server error"})

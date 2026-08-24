@@ -60,7 +60,8 @@ async def request_withdrawal(user_id: int, amount: Decimal | None, bot: Bot) -> 
         # Hold funds immediately so they can't be double-spent.
         user.balance = q(user.balance - amount)
 
-        needs_review = amount >= q(settings.review_threshold)
+        # Large amounts, or accounts flagged for multi-accounting, get reviewed.
+        needs_review = amount >= q(settings.review_threshold) or bool(user.flagged)
         wd = Withdrawal(
             user_id=user_id,
             amount=amount,

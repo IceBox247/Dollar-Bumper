@@ -29,8 +29,24 @@ async def _referral_of(u: WebAppUser) -> int | None:
     return int(sp) if sp.isdigit() else None
 
 
-async def home_state(u: WebAppUser, bot: Bot) -> dict:
+async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
     user = await get_or_create_user(u.id, u.username, u.first_name, await _referral_of(u))
+
+    # Record device IP once, and flag if another account already used this IP.
+    async with Session() as s:
+        row = await s.get(User, u.id)
+        if ip and not row.signup_ip:
+            row.signup_ip = ip[:64]
+            dup = await s.scalar(
+                select(func.count(User.id)).where(
+                    User.signup_ip == ip[:64], User.id != u.id, User.is_banned.is_(False)
+                )
+            )
+            if dup and int(dup) > 0:
+                row.flagged = True
+            await s.commit()
+        device_ok = not row.flagged
+
     async with Session() as s:
         invites = await s.scalar(
             select(func.count(User.id)).where(
@@ -51,6 +67,7 @@ async def home_state(u: WebAppUser, bot: Bot) -> dict:
         "referral_earned": _q(user.referral_earned),
         "invites": int(invites or 0),
         "is_admin": settings.is_admin(user.id),
+        "device_ok": device_ok,
         "referral_link": f"https://t.me/{_bot_username}?start={user.id}",
         "config": {
             "referral_reward": _q(settings.referral_reward),

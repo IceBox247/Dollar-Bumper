@@ -67,12 +67,34 @@ Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False
 _initialized = False
 
 
+# (table, column, column-type SQL) — added idempotently for live DBs that were
+# created before these columns existed (create_all won't alter existing tables).
+_MIGRATIONS = [
+    ("users", "signup_ip", "VARCHAR(64)"),
+    ("users", "flagged", "BOOLEAN DEFAULT FALSE"),
+]
+
+
+async def _run_migrations(conn) -> None:
+    dialect = conn.dialect.name
+    for table, col, typ in _MIGRATIONS:
+        if dialect == "postgresql":
+            await conn.exec_driver_sql(
+                f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {typ}"
+            )
+        else:  # sqlite (local/dev)
+            rows = (await conn.exec_driver_sql(f"PRAGMA table_info({table})")).fetchall()
+            if col not in {r[1] for r in rows}:
+                await conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
+
+
 async def init_db() -> None:
-    """Create tables if missing. Idempotent."""
+    """Create tables if missing + apply lightweight column migrations. Idempotent."""
     from app.db import models  # noqa: F401  (register models on Base.metadata)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _run_migrations(conn)
 
 
 async def ensure_initialized() -> None:
