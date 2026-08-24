@@ -43,7 +43,7 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
                     User.signup_ip == ip[:64], User.id != u.id, User.is_banned.is_(False)
                 )
             )
-            if dup and int(dup) > 0:
+            if dup and int(dup) >= settings.ip_flag_threshold:
                 row.flagged = True
             await s.commit()
         device_ok = not row.flagged

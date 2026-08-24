@@ -186,6 +186,70 @@ async def credit(message: Message, command: CommandObject) -> None:
         pass
 
 
+@router.message(Command("whois"))
+async def whois(message: Message, command: CommandObject) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    if not command.args or not command.args.strip().isdigit():
+        await message.answer("Usage: /whois &lt;user_id&gt;")
+        return
+    uid = int(command.args.strip())
+    async with Session() as s:
+        u = await s.get(User, uid)
+    if u is None:
+        await message.answer("User not found.")
+        return
+    await message.answer(
+        f"👤 <code>{uid}</code>\n"
+        f"Name: {u.first_name} (@{u.username})\n"
+        f"Balance: {usdt(u.balance)} · Earned: {usdt(u.total_earned)}\n"
+        f"Wallet: <code>{u.wallet_address or '—'}</code>\n"
+        f"IP: <code>{u.signup_ip or '—'}</code>\n"
+        f"Onboarded: {u.onboarded} · Flagged: {u.flagged} · Banned: {u.is_banned}"
+    )
+
+
+@router.message(Command("unflag"))
+async def unflag(message: Message, command: CommandObject) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    if not command.args or not command.args.strip().isdigit():
+        await message.answer("Usage: /unflag &lt;user_id&gt;")
+        return
+    uid = int(command.args.strip())
+    async with Session() as s:
+        u = await s.get(User, uid)
+        if u is None:
+            await message.answer("User not found.")
+            return
+        u.flagged = False
+        await s.commit()
+    await message.answer(f"✅ Cleared multi-account flag for <code>{uid}</code>.")
+
+
+@router.message(Command("reset_onboarding"))
+async def reset_onboarding(message: Message, command: CommandObject) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    if not command.args or not command.args.strip().isdigit():
+        await message.answer("Usage: /reset_onboarding &lt;user_id&gt;")
+        return
+    uid = int(command.args.strip())
+    async with Session() as s:
+        u = await s.get(User, uid)
+        if u is None:
+            await message.answer("User not found.")
+            return
+        u.onboarded = False
+        u.flagged = False
+        u.signup_ip = None
+        await s.commit()
+    await message.answer(
+        f"🔄 Reset onboarding for <code>{uid}</code> (onboarded/flagged/IP cleared). "
+        "Reopen the app to run it again."
+    )
+
+
 async def _set_ban(message: Message, command: CommandObject, banned: bool) -> None:
     if not command.args or not command.args.strip().isdigit():
         await message.answer("Usage: /ban &lt;user_id&gt;")

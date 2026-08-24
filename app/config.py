@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     min_withdrawal: Decimal = Decimal("1.0")
     review_threshold: Decimal = Decimal("5.0")
     min_campaign_budget: Decimal = Decimal("10.0")
+    # Flag an account when this many OTHER accounts already share its IP.
+    # 1 = strict (any repeat flags); raise it to tolerate shared/NAT IPs.
+    ip_flag_threshold: int = 1
 
     # Storage
     database_url: str = "sqlite+aiosqlite:///data/dollar_bumper.db"
@@ -86,6 +89,14 @@ class Settings(BaseSettings):
         if v is None or (isinstance(v, str) and v.strip() == ""):
             return _STR_DEFAULTS[info.field_name]
         return v.strip() if isinstance(v, str) else v
+
+    @field_validator("ip_flag_threshold", mode="before")
+    @classmethod
+    def _int_default(cls, v):
+        try:
+            return max(1, int(str(v).strip()))
+        except (ValueError, AttributeError):
+            return 1
 
     @property
     def admin_ids(self) -> list[int]:
