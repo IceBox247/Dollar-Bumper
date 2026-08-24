@@ -67,6 +67,19 @@ async def _run() -> dict:
     except Exception as e:  # noqa: BLE001
         out["ok"] = False
         out["steps"]["webhook"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:300]}
+
+    # 3) Menu button -> launches the Mini App from the chat input bar
+    try:
+        if settings.public_base_url:
+            from aiogram.types import MenuButtonWebApp, WebAppInfo
+
+            app_url = settings.public_base_url.rstrip("/") + "/app/"
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(text="Open App", web_app=WebAppInfo(url=app_url))
+            )
+            out["steps"]["menu_button"] = {"ok": True, "app_url": app_url}
+    except Exception as e:  # noqa: BLE001
+        out["steps"]["menu_button"] = {"ok": False, "error": str(e)[:200]}
     finally:
         await bot.session.close()
 

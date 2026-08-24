@@ -6,11 +6,26 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
+    WebAppInfo,
 )
 
 from app.config import settings
 from app.db.models import Campaign
 from app.utils.format import usdt
+
+
+def app_url() -> str:
+    base = (settings.public_base_url or "").rstrip("/")
+    return f"{base}/app/" if base else ""
+
+
+def open_app_inline() -> InlineKeyboardMarkup | None:
+    url = app_url()
+    if not url:
+        return None
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🚀 Open Dollar Bumper", web_app=WebAppInfo(url=url))
+    ]])
 
 # ── Buttons: main navigation (persistent reply keyboard) ──────
 BTN_WALLET = "💼 Wallet"
@@ -22,7 +37,11 @@ BTN_HELP = "ℹ️ Help"
 
 
 def main_menu(is_admin: bool = False) -> ReplyKeyboardMarkup:
-    rows = [
+    rows = []
+    url = app_url()
+    if url:
+        rows.append([KeyboardButton(text="🚀 Open App", web_app=WebAppInfo(url=url))])
+    rows += [
         [KeyboardButton(text=BTN_WALLET), KeyboardButton(text=BTN_TASKS)],
         [KeyboardButton(text=BTN_INVITE), KeyboardButton(text=BTN_WITHDRAW)],
         [KeyboardButton(text=BTN_ADVERTISE), KeyboardButton(text=BTN_HELP)],

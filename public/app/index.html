@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Dollar Bumper</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#0b0f17; --card:#141a26; --card2:#1b2333; --line:#243048;
+    --txt:#eaf0fb; --sub:#93a3c0; --accent:#f5c542; --accent2:#3b82f6;
+    --green:#34d399; --red:#f87171;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:0 0 90px;min-height:100vh}
+  .wrap{max-width:520px;margin:0 auto;padding:16px}
+  .brand{display:flex;align-items:center;gap:10px;padding:8px 4px 14px}
+  .brand .logo{font-size:26px}
+  .brand h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
+  .brand .tag{margin-left:auto;font-size:11px;color:var(--sub);background:var(--card);
+    border:1px solid var(--line);padding:5px 10px;border-radius:999px}
+
+  .balance-card{background:linear-gradient(135deg,#1c2437,#0f1626);border:1px solid var(--line);
+    border-radius:20px;padding:22px;position:relative;overflow:hidden}
+  .balance-card:before{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;
+    background:radial-gradient(circle,rgba(245,197,66,.18),transparent 70%)}
+  .balance-card .lbl{font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em}
+  .balance-card .amt{font-size:38px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
+  .balance-card .amt small{font-size:16px;color:var(--sub);font-weight:600}
+  .balance-card .row{display:flex;gap:18px;margin-top:16px}
+  .balance-card .row .k{font-size:11px;color:var(--sub)}
+  .balance-card .row .v{font-size:15px;font-weight:700;margin-top:2px}
+
+  .section-title{font-size:13px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;
+    margin:22px 4px 10px;font-weight:700}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .card p{font-size:13px;color:var(--sub);line-height:1.5}
+  .reward-pill{margin-left:auto;background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.3);
+    font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px}
+
+  .btn{display:block;width:100%;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;
+    cursor:pointer;transition:transform .07s ease;font-family:inherit;margin-top:10px}
+  .btn:active{transform:scale(.98)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),#e0a92e);color:#1a1400}
+  .btn.blue{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff}
+  .btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
+  .btn.sm{padding:11px;font-size:14px}
+  .btn:disabled{opacity:.5}
+
+  .input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;
+    padding:14px;color:var(--txt);font-size:15px;font-family:inherit;margin-top:8px}
+  .input::placeholder{color:#5f6f8c}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
+
+  .link-box{background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:12px;
+    font-size:12px;color:var(--sub);word-break:break-all;margin-top:8px}
+
+  .nav{position:fixed;bottom:0;left:0;right:0;background:rgba(13,18,28,.92);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
+  .nav button{background:none;border:none;color:var(--sub);font-size:11px;font-weight:600;display:flex;
+    flex-direction:column;align-items:center;gap:3px;padding:6px 14px;border-radius:12px;cursor:pointer;font-family:inherit}
+  .nav button .ic{font-size:20px}
+  .nav button.active{color:var(--accent)}
+  .nav button.active .ic{transform:translateY(-1px)}
+
+  .empty{text-align:center;color:var(--sub);padding:40px 20px;font-size:14px}
+  .empty .big{font-size:40px;margin-bottom:10px}
+  .hidden{display:none}
+  .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#0f1626;border:1px solid var(--line);
+    color:var(--txt);padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;
+    pointer-events:none;z-index:50;max-width:90%;text-align:center}
+  .toast.show{opacity:1}
+  .skeleton{background:linear-gradient(90deg,#141a26,#1b2333,#141a26);background-size:200% 100%;
+    animation:sk 1.2s infinite;border-radius:12px;height:16px;margin:8px 0}
+  @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+    border-radius:50%;animation:rot .7s linear infinite;vertical-align:-2px}
+  @keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <span class="logo">💵</span>
+    <h1>Dollar Bumper</h1>
+    <span class="tag" id="netTag">BEP20</span>
+  </div>
+
+  <!-- HOME -->
+  <div id="tab-home">
+    <div class="balance-card">
+      <div class="lbl">Balance</div>
+      <div class="amt" id="balance">—<small> USDT</small></div>
+      <div class="row">
+        <div><div class="k">Total earned</div><div class="v" id="earned">—</div></div>
+        <div><div class="k">From referrals</div><div class="v" id="refEarned">—</div></div>
+        <div><div class="k">Invites</div><div class="v" id="invites">—</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Your wallet</div>
+    <div class="card">
+      <h3>⛓️ USDT (BEP20)</h3>
+      <p class="mono" id="walletAddr">Not set</p>
+      <input class="input hidden" id="walletInput" placeholder="0x… your BEP20 address" />
+      <button class="btn ghost sm" id="walletBtn" onclick="toggleWallet()">✏️ Set / Update Wallet</button>
+    </div>
+
+    <div class="section-title">Quick actions</div>
+    <button class="btn primary" onclick="go('tasks')">📋 Earn Tasks</button>
+    <button class="btn blue" onclick="go('invite')">👥 Invite &amp; Earn</button>
+    <button class="btn ghost" onclick="go('withdraw')">💸 Withdraw</button>
+  </div>
+
+  <!-- TASKS -->
+  <div id="tab-tasks" class="hidden">
+    <div class="section-title">Earn Tasks</div>
+    <div id="tasksList"><div class="skeleton"></div><div class="skeleton" style="width:70%"></div></div>
+  </div>
+
+  <!-- INVITE -->
+  <div id="tab-invite" class="hidden">
+    <div class="section-title">Invite &amp; Earn</div>
+    <div class="card">
+      <h3>🚀 Earn real USDT</h3>
+      <p>You receive <b id="refRewardTxt">—</b> for every friend who joins and completes their first task.</p>
+      <div class="link-box" id="refLink">—</div>
+      <button class="btn primary" onclick="shareLink()">📤 Share Invite Link</button>
+      <button class="btn ghost sm" onclick="copyLink()">📋 Copy Link</button>
+    </div>
+    <div class="card">
+      <h3>📊 Your referrals</h3>
+      <p>Valid invites: <b id="invites2">—</b><br>Referral earnings: <b id="refEarned2">—</b></p>
+    </div>
+  </div>
+
+  <!-- WITHDRAW -->
+  <div id="tab-withdraw" class="hidden">
+    <div class="section-title">Withdraw</div>
+    <div class="card">
+      <h3>💸 Cash out</h3>
+      <p>Balance: <b id="wBalance">—</b><br>Minimum: <b id="wMin">—</b> · Network: BEP20 (BSC)<br>
+      Under <b id="wThresh">—</b> pays instantly; larger amounts get a quick review.</p>
+      <input class="input" id="amountInput" inputmode="decimal" placeholder="Amount in USDT (blank = all)" />
+      <button class="btn primary" id="wBtn" onclick="doWithdraw()">💸 Withdraw</button>
+    </div>
+    <p class="empty" style="font-size:12px">Every real payout is posted publicly with a BscScan link.</p>
+  </div>
+</div>
+
+<div class="nav">
+  <button data-tab="home" class="active" onclick="go('home')"><span class="ic">🏠</span>Home</button>
+  <button data-tab="tasks" onclick="go('tasks')"><span class="ic">📋</span>Tasks</button>
+  <button data-tab="invite" onclick="go('invite')"><span class="ic">👥</span>Invite</button>
+  <button data-tab="withdraw" onclick="go('withdraw')"><span class="ic">💸</span>Withdraw</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#0b0f17'); }
+const initData = tg ? tg.initData : '';
+let STATE = null;
+
+function haptic(t){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t); }catch(e){} }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+
+async function api(action, extra){
+  const r = await fetch('/api/app',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify(Object.assign({action, initData}, extra||{}))});
+  return r.json();
+}
+function fmt(n){ const x=parseFloat(n||'0'); return x.toFixed(x<1?4:2).replace(/0+$/,'').replace(/\.$/,'.00'); }
+function usdt(n){ return fmt(n)+' USDT'; }
+
+async function loadHome(){
+  const d = await api('home');
+  if(!d.ok){ toast(d.error||'Could not load'); return; }
+  STATE = d;
+  document.getElementById('balance').innerHTML = fmt(d.balance)+'<small> USDT</small>';
+  document.getElementById('earned').textContent = usdt(d.total_earned);
+  document.getElementById('refEarned').textContent = usdt(d.referral_earned);
+  document.getElementById('invites').textContent = d.invites;
+  document.getElementById('walletAddr').textContent = d.wallet || 'Not set';
+  document.getElementById('refRewardTxt').textContent = usdt(d.config.referral_reward);
+  document.getElementById('refLink').textContent = d.referral_link;
+  document.getElementById('invites2').textContent = d.invites;
+  document.getElementById('refEarned2').textContent = usdt(d.referral_earned);
+  document.getElementById('wBalance').textContent = usdt(d.balance);
+  document.getElementById('wMin').textContent = usdt(d.config.min_withdrawal);
+  document.getElementById('wThresh').textContent = usdt(d.config.review_threshold);
+}
+
+async function loadTasks(){
+  const box=document.getElementById('tasksList');
+  const d = await api('tasks');
+  if(!d.ok){ box.innerHTML='<div class="empty">Could not load tasks.</div>'; return; }
+  if(!d.tasks.length){ box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now. Check back soon or invite friends!</div>'; return; }
+  box.innerHTML='';
+  d.tasks.forEach(t=>{
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML=`<h3>📢 ${escapeHtml(t.title)} <span class="reward-pill">${usdt(t.reward)}</span></h3>
+      ${t.description?`<p>${escapeHtml(t.description)}</p>`:''}
+      <p>Join <b>${escapeHtml(t.channel)}</b>, then verify.</p>
+      <button class="btn ghost sm" onclick="openChannel('${t.url}')">📢 Open Channel</button>
+      <button class="btn primary sm" id="v${t.id}" onclick="verify(${t.id})">✅ Verify &amp; Claim</button>`;
+    box.appendChild(c);
+  });
+}
+
+function openChannel(url){ tg ? tg.openTelegramLink(url) : window.open(url,'_blank'); }
+
+async function verify(id){
+  const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Checking…';
+  const d = await api('verify',{campaign_id:id});
+  if(d.ok){ haptic('success'); toast('✅ Verified! '+usdt(d.reward)+' added'); await loadHome(); await loadTasks(); }
+  else{ haptic('error'); toast(d.error||'Not verified'); b.disabled=false; b.innerHTML='✅ Verify &amp; Claim'; }
+}
+
+function toggleWallet(){
+  const inp=document.getElementById('walletInput'); const btn=document.getElementById('walletBtn');
+  if(inp.classList.contains('hidden')){ inp.classList.remove('hidden'); inp.value=(STATE&&STATE.wallet)||'';
+    btn.textContent='💾 Save Wallet'; inp.focus(); }
+  else{ saveWallet(); }
+}
+async function saveWallet(){
+  const inp=document.getElementById('walletInput'); const btn=document.getElementById('walletBtn');
+  const d = await api('set_wallet',{address:inp.value.trim()});
+  if(d.ok){ haptic('success'); toast('🎉 Wallet saved'); inp.classList.add('hidden');
+    btn.textContent='✏️ Set / Update Wallet'; await loadHome(); }
+  else{ haptic('error'); toast(d.error||'Invalid address'); }
+}
+
+function copyLink(){ const l=STATE?STATE.referral_link:''; navigator.clipboard.writeText(l).then(()=>toast('📋 Link copied')); }
+function shareLink(){ const l=STATE?STATE.referral_link:'';
+  const u='https://t.me/share/url?url='+encodeURIComponent(l)+'&text='+encodeURIComponent('Earn real USDT with Dollar Bumper! 👇');
+  tg ? tg.openTelegramLink(u) : window.open(u,'_blank'); }
+
+async function doWithdraw(){
+  const b=document.getElementById('wBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Processing…';
+  const amt=document.getElementById('amountInput').value.trim();
+  const d = await api('withdraw',{amount:amt||'all'});
+  if(d.ok){ haptic('success'); toast(d.message||'Requested'); await loadHome(); }
+  else{ haptic('error'); toast(d.error||d.message||'Failed'); }
+  b.disabled=false; b.innerHTML='💸 Withdraw';
+}
+
+function go(tab){
+  ['home','tasks','invite','withdraw'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
+  });
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
+  if(tab==='tasks') loadTasks();
+  window.scrollTo(0,0);
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+if(!initData){
+  document.querySelector('.wrap').innerHTML =
+    '<div class="empty"><div class="big">🔒</div>Open this from inside Telegram via the bot to sign in.</div>';
+}else{
+  loadHome();
+}
+</script>
+</body>
+</html>

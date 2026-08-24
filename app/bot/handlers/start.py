@@ -29,6 +29,13 @@ async def _send_home(message: Message, user_id: int, first_name: str | None) -> 
     await message.answer(
         ui.welcome(first_name), reply_markup=kb.main_menu(is_admin),
     )
+    inline = kb.open_app_inline()
+    if inline:
+        await message.answer(
+            "👇 Tap below to open the app — your wallet, tasks, invites and "
+            "withdrawals, all in one place.",
+            reply_markup=inline,
+        )
 
 
 @router.message(CommandStart())
