@@ -6,7 +6,6 @@ If WEBHOOK_SECRET is unset, no token is required.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
@@ -15,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app._aio import run_async  # noqa: E402
 from app.config import settings  # noqa: E402
 
 
@@ -70,7 +70,7 @@ class handler(BaseHTTPRequestHandler):
                 self._json(401, {"ok": False, "error": "unauthorized"})
                 return
         try:
-            result = asyncio.run(_gather())
+            result = run_async(_gather())
         except Exception as e:  # noqa: BLE001
             self._json(500, {"ok": False, "error": str(e)[:200]})
             return

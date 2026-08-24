@@ -10,13 +10,13 @@ import os
 import re
 from pathlib import Path
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -53,8 +53,14 @@ def _build_engine():
         # Supabase connection string works too, not just the direct one.
         connect_args["statement_cache_size"] = 0
         kwargs["connect_args"] = connect_args
-        # Fresh connection per invocation — safe for serverless.
-        kwargs["poolclass"] = NullPool
+        # Keep a small warm pool so warm serverless invocations reuse the SSL
+        # connection instead of re-handshaking every request. Safe because this
+        # process pins one persistent event loop (see app/_aio.py); pre-ping +
+        # recycle guard against a connection dropped while the container idled.
+        kwargs["pool_size"] = 1
+        kwargs["max_overflow"] = 2
+        kwargs["pool_pre_ping"] = True
+        kwargs["pool_recycle"] = 280
     else:
         _ensure_sqlite_dir(url)
 
@@ -101,9 +107,26 @@ async def init_db() -> None:
 
 
 async def ensure_initialized() -> None:
-    """Run schema init at most once per process (for serverless cold starts)."""
+    """Make sure the schema exists — at most once per process.
+
+    On a cold start against an existing database this used to reflect every
+    table and run five ALTERs inside the request, which could blow the function
+    timeout while the DB was waking up. Instead we do one cheap probe; only if
+    it fails (fresh/empty DB, or a column the migrations add is missing) do we
+    pay for the full create_all + migrations.
+    """
     global _initialized
     if _initialized:
         return
+    try:
+        async with engine.connect() as conn:
+            # Touches the newest migrated column too, so a DB that predates the
+            # task columns still triggers a real init rather than silently
+            # 500ing later on the tasks query.
+            await conn.execute(text("SELECT kind FROM campaigns LIMIT 1"))
+        _initialized = True
+        return
+    except Exception:  # noqa: BLE001  (any failure -> do a full init)
+        pass
     await init_db()
     _initialized = True

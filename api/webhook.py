@@ -6,7 +6,6 @@ with a secret_token equal to WEBHOOK_SECRET (see scripts/set_webhook.py).
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
@@ -15,6 +14,7 @@ from http.server import BaseHTTPRequestHandler
 # Make the project root importable from inside /api.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app._aio import run_async  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.runtime import process_update  # noqa: E402
 
@@ -37,7 +37,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            asyncio.run(process_update(data))
+            run_async(process_update(data))
         except Exception as e:  # noqa: BLE001
             # Always 200 so Telegram doesn't spin on retries; log for debugging.
             print("webhook error:", repr(e))

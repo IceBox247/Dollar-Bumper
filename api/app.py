@@ -7,7 +7,6 @@ Every call is authenticated by verifying Telegram's initData signature.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
@@ -57,10 +56,12 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         from app.webapp.api import read_json_body
 
+        from app._aio import run_async
+
         data = read_json_body(self.rfile, self.headers)
         action = (data.get("action") or "").strip()
         try:
-            result = asyncio.run(_dispatch(action, data, self._client_ip()))
+            result = run_async(_dispatch(action, data, self._client_ip()))
         except Exception as e:  # noqa: BLE001
             print("app api error:", repr(e))
             self._json(500, {"ok": False, "error": "server error"})

@@ -12,7 +12,6 @@ Safe to run multiple times. Requires ?token=<WEBHOOK_SECRET>.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
@@ -22,6 +21,8 @@ from urllib.parse import parse_qs, urlparse
 
 # Make the project root importable from inside /api.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app._aio import run_async  # noqa: E402
 
 
 async def _run() -> dict:
@@ -112,7 +113,7 @@ class handler(BaseHTTPRequestHandler):
             if not settings.webhook_secret or token != settings.webhook_secret:
                 self._json(401, {"ok": False, "error": "unauthorized — append ?token=<WEBHOOK_SECRET>"})
                 return
-            result = asyncio.run(_run())
+            result = run_async(_run())
             self._json(200 if result["ok"] else 503, result)
         except Exception as e:  # noqa: BLE001
             # Surface the real cause instead of a bare 500 crash page.

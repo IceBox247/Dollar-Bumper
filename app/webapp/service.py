@@ -56,8 +56,15 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
         )
 
     global _bot_username
-    if _bot_username is None:
-        _bot_username = (await bot.get_me()).username
+    if not _bot_username:
+        # Prefer a configured username (zero network); fall back to a cached
+        # getMe. Never let a Telegram hiccup fail the whole home payload.
+        _bot_username = settings.bot_username or None
+        if not _bot_username:
+            try:
+                _bot_username = (await bot.get_me()).username
+            except Exception:  # noqa: BLE001
+                _bot_username = None
 
     return {
         "ok": True,
@@ -70,7 +77,9 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
         "is_admin": settings.is_admin(user.id),
         "device_ok": device_ok,
         "onboarded": bool(row.onboarded),
-        "referral_link": f"https://t.me/{_bot_username}?start={user.id}",
+        "referral_link": (
+            f"https://t.me/{_bot_username}?start={user.id}" if _bot_username else ""
+        ),
         "config": {
             "referral_reward": _q(settings.referral_reward),
             "min_withdrawal": _q(settings.min_withdrawal),

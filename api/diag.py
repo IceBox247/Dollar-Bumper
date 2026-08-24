@@ -7,7 +7,6 @@ bot isn't replying (e.g. the webhook function is 500ing or timing out).
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
@@ -16,6 +15,8 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app._aio import run_async  # noqa: E402
 
 
 async def _run() -> dict:
@@ -54,7 +55,7 @@ class handler(BaseHTTPRequestHandler):
             if not settings.webhook_secret or token != settings.webhook_secret:
                 self._json(401, {"ok": False, "error": "unauthorized"})
                 return
-            self._json(200, asyncio.run(_run()))
+            self._json(200, run_async(_run()))
         except Exception as e:  # noqa: BLE001
             self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}",
                              "trace": traceback.format_exc()[-1200:]})

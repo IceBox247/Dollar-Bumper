@@ -31,6 +31,9 @@ class Settings(BaseSettings):
 
     # Telegram
     bot_token: str
+    # Optional: the bot's @username (without @). If set, the Mini App skips a
+    # live getMe call on every cold start when building referral links.
+    bot_username: str = ""
     # Stored as raw strings; parsed into lists via the properties below.
     # (pydantic-settings JSON-parses list-typed env vars before validators run.)
     admin_ids_raw: str = Field(default="", validation_alias="ADMIN_IDS")

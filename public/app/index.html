@@ -319,14 +319,21 @@ let STATE = null;
 function haptic(t){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t); }catch(e){} }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
-async function api(action, extra){
-  try{
-    const r = await fetch('/api/app',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify(Object.assign({action, initData}, extra||{}))});
-    return await r.json();
-  }catch(e){
-    return {ok:false, error:'network'};
+async function api(action, extra, tries){
+  tries = tries==null ? 2 : tries;   // one silent retry by default (cold starts)
+  for(let i=0;i<tries;i++){
+    try{
+      const r = await fetch('/api/app',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify(Object.assign({action, initData}, extra||{}))});
+      const j = await r.json();
+      if(j && j.ok===false && r.status>=500 && i<tries-1) continue; // server warming up
+      return j;
+    }catch(e){
+      if(i<tries-1){ await new Promise(res=>setTimeout(res,700)); continue; }
+      return {ok:false, error:'network'};
+    }
   }
+  return {ok:false, error:'network'};
 }
 function fmt(n){ let x=parseFloat(n||'0'); let s=x.toFixed(x<1?4:2); if(s.indexOf('.')>-1)s=s.replace(/0+$/,'').replace(/\.$/,'.00'); return s; }
 function usdt(n){ return fmt(n)+' USDT'; }
@@ -356,9 +363,10 @@ function applyHome(d){
 
 async function loadHome(){
   const d = await api('home');
-  if(!d.ok){ toast(d.error||'Could not load'); return; }
+  if(!d.ok){ toast(d.error==='network'?'Network hiccup — retrying…':(d.error||'Could not load')); return; }
   applyHome(d); cacheSet(d);
   if(!d.onboarded){ showOnboarding(); }
+  else { refreshTasks(false); }   // warm the Tasks tab in the background
 }
 
 /* ---- Onboarding flow: human check -> IP verify -> welcome ---- */
@@ -455,13 +463,17 @@ function openLink(url){
   if(url.indexOf('t.me/')>-1){ tg? tg.openTelegramLink(url) : window.open(url,'_blank'); }
   else { (tg&&tg.openLink)? tg.openLink(url) : window.open(url,'_blank'); }
 }
-async function loadTasks(){
+function tasksCacheGet(){ try{ return JSON.parse(localStorage.getItem('db_tasks')||'null'); }catch(e){ return null; } }
+function tasksCacheSet(t){ try{ localStorage.setItem('db_tasks', JSON.stringify(t)); }catch(e){} }
+
+function renderTasks(tasks){
   const box=document.getElementById('tasksList');
-  const d = await api('tasks');
-  if(!d.ok){ box.innerHTML='<div class="empty">Could not load tasks.</div>'; return; }
-  if(!d.tasks.length){ box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now.<br>Check back soon!</div>'; return; }
+  if(!tasks || !tasks.length){
+    box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now.<br>Check back soon!</div>';
+    return;
+  }
   box.innerHTML='';
-  d.tasks.forEach(t=>{
+  tasks.forEach(t=>{
     const visit = t.kind==='visit';
     const claimLabel = visit ? '💰 Claim Reward' : '✅ Verify &amp; Claim';
     const c=document.createElement('div'); c.className='card fade';
@@ -472,6 +484,24 @@ async function loadTasks(){
       ${visit?`<div class="thint" id="h${t.id}">Open the task, then claim.</div>`:''}`;
     box.appendChild(c);
   });
+}
+
+// Fetch tasks and update the cache; optionally repaint. Returns true on success.
+async function refreshTasks(paint){
+  const d = await api('tasks');
+  if(d.ok && d.tasks){ tasksCacheSet(d.tasks); if(paint) renderTasks(d.tasks); return true; }
+  return false;
+}
+
+async function loadTasks(){
+  const box=document.getElementById('tasksList');
+  const cached = tasksCacheGet();
+  if(cached){ renderTasks(cached); }        // instant paint from last-known list
+  const ok = await refreshTasks(true);
+  if(!ok && !cached){
+    box.innerHTML='<div class="empty"><div class="big">📡</div>Couldn\'t load tasks.'+
+      '<br><button class="btn ghost sm" style="max-width:180px;margin:14px auto 0" onclick="loadTasks()">🔄 Retry</button></div>';
+  }
 }
 function openTask(url,id,visit){
   openLink(url);
@@ -501,8 +531,9 @@ async function saveWallet(){
     btn.textContent='✏️ Set / Update Wallet'; await loadHome(); }
   else{ haptic('error'); toast(d.error||'Invalid address'); }
 }
-function copyLink(){ const l=STATE?STATE.referral_link:''; navigator.clipboard.writeText(l).then(()=>toast('📋 Link copied')); }
-function shareLink(){ const l=STATE?STATE.referral_link:'';
+function copyLink(){ const l=STATE?STATE.referral_link:''; if(!l){ toast('Link not ready — reopen in a moment.'); return; }
+  navigator.clipboard.writeText(l).then(()=>toast('📋 Link copied')); }
+function shareLink(){ const l=STATE?STATE.referral_link:''; if(!l){ toast('Link not ready — reopen in a moment.'); return; }
   const u='https://t.me/share/url?url='+encodeURIComponent(l)+'&text='+encodeURIComponent('Earn real USDT with Dollar Bumper! 👇');
   tg ? tg.openTelegramLink(u) : window.open(u,'_blank'); }
 async function doWithdraw(){

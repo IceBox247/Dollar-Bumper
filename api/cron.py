@@ -6,13 +6,13 @@ wait for cron. Upgrade the schedule on Pro for faster confirmation.
 """
 from __future__ import annotations
 
-import asyncio
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app._aio import run_async  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.runtime import run_confirm  # noqa: E402
 
@@ -27,7 +27,7 @@ class handler(BaseHTTPRequestHandler):
 
         n = 0
         try:
-            n = asyncio.run(run_confirm(limit=50))
+            n = run_async(run_confirm(limit=50))
         except Exception as e:  # noqa: BLE001
             print("cron error:", repr(e))
             self._respond(500, "error")
