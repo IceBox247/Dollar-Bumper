@@ -1,6 +1,8 @@
 """Admin commands: stats, pending reviews, wallet funding, approvals, bans."""
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (
@@ -16,7 +18,7 @@ from app.constants import CampaignStatus, WithdrawalStatus
 from app.db.base import Session
 from app.db.models import Campaign, User, Withdrawal
 from app.services.payouts import approve_withdrawal, reject_withdrawal
-from app.utils.format import mask_wallet, usdt
+from app.utils.format import mask_wallet, q, usdt
 
 router = Router(name="admin")
 
@@ -147,6 +149,41 @@ async def unban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
         return
     await _set_ban(message, command, False)
+
+
+@router.message(Command("credit"))
+async def credit(message: Message, command: CommandObject) -> None:
+    """Admin: adjust a user's balance. Usage: /credit <user_id> <amount>
+    Use a negative amount to deduct."""
+    if not _is_admin(message.from_user.id):
+        return
+    parts = (command.args or "").split()
+    if len(parts) != 2:
+        await message.answer("Usage: <code>/credit &lt;user_id&gt; &lt;amount&gt;</code>")
+        return
+    try:
+        uid = int(parts[0])
+        amount = Decimal(parts[1])
+    except (ValueError, InvalidOperation):
+        await message.answer("❌ Bad arguments. Example: <code>/credit 123456 0.06</code>")
+        return
+    async with Session() as s:
+        user = await s.get(User, uid)
+        if user is None:
+            await message.answer("User not found (they must /start the bot first).")
+            return
+        user.balance = q(user.balance + amount)
+        new_balance = user.balance
+        await s.commit()
+    await message.answer(
+        f"✅ Adjusted <code>{uid}</code> by {usdt(amount)}.\nNew balance: <b>{usdt(new_balance)}</b>"
+    )
+    try:
+        await message.bot.send_message(
+            uid, f"💰 Your balance was updated by an admin: {usdt(amount)}."
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 async def _set_ban(message: Message, command: CommandObject, banned: bool) -> None:
