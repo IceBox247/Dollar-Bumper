@@ -4,8 +4,16 @@ from __future__ import annotations
 from decimal import Decimal
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Fallbacks used when an economics env var is present but left blank.
+_DECIMAL_DEFAULTS = {
+    "referral_reward": Decimal("0.01"),
+    "min_withdrawal": Decimal("1.0"),
+    "review_threshold": Decimal("5.0"),
+    "min_campaign_budget": Decimal("10.0"),
+}
 
 
 class Settings(BaseSettings):
@@ -42,6 +50,16 @@ class Settings(BaseSettings):
     webhook_secret: str = ""      # shared secret Telegram echoes back in a header
     cron_secret: str = ""         # Vercel injects this as a Bearer token on cron calls
     public_base_url: str = ""     # e.g. https://dollar-bumper.vercel.app
+
+    @field_validator(
+        "referral_reward", "min_withdrawal", "review_threshold", "min_campaign_budget",
+        mode="before",
+    )
+    @classmethod
+    def _blank_decimal_to_default(cls, v, info):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return _DECIMAL_DEFAULTS[info.field_name]
+        return v
 
     @property
     def admin_ids(self) -> list[int]:
