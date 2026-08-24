@@ -185,6 +185,12 @@ async def complete_onboarding(u: WebAppUser, bot: Bot) -> dict:
     return {"ok": True}
 
 
+def _task_url(c: Campaign) -> str:
+    if c.link:
+        return c.link
+    return f"https://t.me/{c.channel.lstrip('@')}" if c.channel else ""
+
+
 async def tasks_list(u: WebAppUser) -> dict:
     camps = await active_campaigns_for(u.id)
     return {
@@ -196,7 +202,8 @@ async def tasks_list(u: WebAppUser) -> dict:
                 "channel": c.channel,
                 "reward": _q(c.reward_per_task),
                 "description": c.description,
-                "url": f"https://t.me/{c.channel.lstrip('@')}",
+                "kind": c.kind,
+                "url": _task_url(c),
             }
             for c in camps
         ],
@@ -208,8 +215,10 @@ async def task_verify(u: WebAppUser, campaign_id: int, bot: Bot) -> dict:
         c = await s.get(Campaign, campaign_id)
     if c is None:
         return {"ok": False, "error": "Task not found."}
-    if not await is_member(bot, c.channel, u.id):
-        return {"ok": False, "error": f"Join {c.channel} first, then verify."}
+    # Channel tasks: verify real membership. Visit tasks: honor-based claim.
+    if c.kind == "channel" and c.channel:
+        if not await is_member(bot, c.channel, u.id):
+            return {"ok": False, "error": f"Join {c.channel} first, then claim."}
 
     res = await complete_task(u.id, campaign_id)
     if not res.ok:

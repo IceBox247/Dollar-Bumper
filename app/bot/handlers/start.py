@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, Message
 
 from app.bot import keyboards as kb
 from app.bot import ui
-from app.bot.handlers.common import missing_channels
+from app.bot.handlers.common import missing_channels, missing_channels_detailed
 from app.config import settings
 from app.services.earning import get_or_create_user
 
@@ -70,9 +70,15 @@ async def cmd_start(message: Message, bot: Bot) -> None:
 
 @router.callback_query(F.data == "gate:check")
 async def gate_check(cb: CallbackQuery, bot: Bot) -> None:
-    missing = await missing_channels(bot, cb.from_user.id)
-    if missing:
-        await cb.answer("You haven't joined all channels yet.", show_alert=True)
+    detailed = await missing_channels_detailed(bot, cb.from_user.id)
+    if detailed:
+        # Surface the exact channel + reason (an error => bot not admin there).
+        lines = "\n".join(f"{c} → {r}" for c, r in detailed)
+        await cb.answer(
+            f"Not verified yet:\n{lines}\n\n"
+            "If it says an error, the bot must be an ADMIN of that channel.",
+            show_alert=True,
+        )
         return
     await cb.message.delete()
     await cb.answer("Verified ✅")

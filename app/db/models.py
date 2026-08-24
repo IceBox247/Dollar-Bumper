@@ -66,6 +66,10 @@ class Campaign(Base):
     budget_total: Mapped[Decimal] = mapped_column(MONEY)
     budget_remaining: Mapped[Decimal] = mapped_column(MONEY)
 
+    # "channel" = verify membership (bot must be admin); "visit" = open link + claim.
+    kind: Mapped[str] = mapped_column(String(16), default="channel")
+    link: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     status: Mapped[str] = mapped_column(String(24), default=CampaignStatus.PENDING_PAYMENT.value)
     payment_tx_hash: Mapped[str | None] = mapped_column(String(80), nullable=True)
     payment_amount: Mapped[Decimal | None] = mapped_column(MONEY, nullable=True)

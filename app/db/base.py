@@ -73,6 +73,8 @@ _MIGRATIONS = [
     ("users", "signup_ip", "VARCHAR(64)"),
     ("users", "flagged", "BOOLEAN DEFAULT FALSE"),
     ("users", "onboarded", "BOOLEAN DEFAULT FALSE"),
+    ("campaigns", "kind", "VARCHAR(16) DEFAULT 'channel'"),
+    ("campaigns", "link", "TEXT"),
 ]
 
 

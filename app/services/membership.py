@@ -11,6 +11,16 @@ log = logging.getLogger(__name__)
 _JOINED = {"member", "administrator", "creator"}
 
 
+async def member_status(bot: Bot, channel: str, user_id: int) -> tuple[bool, str]:
+    """Return (joined, reason). reason is the status or an error string —
+    an error usually means the bot isn't an admin of that channel."""
+    try:
+        member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
+        return member.status in _JOINED, str(member.status)
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}: {str(e)[:70]}"
+
+
 async def is_member(bot: Bot, channel: str, user_id: int) -> bool:
     """True if user_id is a member of `channel` (@username or -100... id).
 
