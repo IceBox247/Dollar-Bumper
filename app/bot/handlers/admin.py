@@ -1,6 +1,7 @@
 """Admin commands: stats, pending reviews, wallet funding, approvals, bans."""
 from __future__ import annotations
 
+import re
 from decimal import Decimal, InvalidOperation
 
 from aiogram import Bot, F, Router
@@ -25,6 +26,14 @@ router = Router(name="admin")
 
 def _is_admin(user_id: int) -> bool:
     return settings.is_admin(user_id)
+
+
+def _uid(args: str | None) -> int | None:
+    """Extract a user id from args, tolerating <brackets>, spaces, etc."""
+    if not args:
+        return None
+    m = re.search(r"\d{3,}", args)
+    return int(m.group()) if m else None
 
 
 @router.message(Command("stats"))
@@ -158,14 +167,14 @@ async def credit(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
         return
     parts = (command.args or "").split()
-    if len(parts) != 2:
-        await message.answer("Usage: <code>/credit &lt;user_id&gt; &lt;amount&gt;</code>")
+    uid = _uid(parts[0]) if parts else None
+    if uid is None or len(parts) < 2:
+        await message.answer("Usage: <code>/credit 123456789 0.06</code>")
         return
     try:
-        uid = int(parts[0])
         amount = Decimal(parts[1])
     except (ValueError, InvalidOperation):
-        await message.answer("❌ Bad arguments. Example: <code>/credit 123456 0.06</code>")
+        await message.answer("❌ Bad amount. Example: <code>/credit 123456789 0.06</code>")
         return
     async with Session() as s:
         user = await s.get(User, uid)
@@ -190,10 +199,10 @@ async def credit(message: Message, command: CommandObject) -> None:
 async def whois(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
         return
-    if not command.args or not command.args.strip().isdigit():
-        await message.answer("Usage: /whois &lt;user_id&gt;")
+    uid = _uid(command.args)
+    if uid is None:
+        await message.answer("Usage: /whois 123456789")
         return
-    uid = int(command.args.strip())
     async with Session() as s:
         u = await s.get(User, uid)
     if u is None:
@@ -213,10 +222,10 @@ async def whois(message: Message, command: CommandObject) -> None:
 async def unflag(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
         return
-    if not command.args or not command.args.strip().isdigit():
-        await message.answer("Usage: /unflag &lt;user_id&gt;")
+    uid = _uid(command.args)
+    if uid is None:
+        await message.answer("Usage: /unflag 123456789")
         return
-    uid = int(command.args.strip())
     async with Session() as s:
         u = await s.get(User, uid)
         if u is None:
@@ -231,10 +240,10 @@ async def unflag(message: Message, command: CommandObject) -> None:
 async def reset_onboarding(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
         return
-    if not command.args or not command.args.strip().isdigit():
-        await message.answer("Usage: /reset_onboarding &lt;user_id&gt;")
+    uid = _uid(command.args)
+    if uid is None:
+        await message.answer("Usage: /reset_onboarding 123456789")
         return
-    uid = int(command.args.strip())
     async with Session() as s:
         u = await s.get(User, uid)
         if u is None:
@@ -251,10 +260,10 @@ async def reset_onboarding(message: Message, command: CommandObject) -> None:
 
 
 async def _set_ban(message: Message, command: CommandObject, banned: bool) -> None:
-    if not command.args or not command.args.strip().isdigit():
-        await message.answer("Usage: /ban &lt;user_id&gt;")
+    uid = _uid(command.args)
+    if uid is None:
+        await message.answer("Usage: /ban 123456789")
         return
-    uid = int(command.args.strip())
     async with Session() as s:
         user = await s.get(User, uid)
         if user is None:
