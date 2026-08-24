@@ -3,13 +3,11 @@ from __future__ import annotations
 
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.bot import keyboards as kb
 from app.bot import ui
 from app.bot.handlers.common import missing_channels
-from app.bot.states import WalletStates
 from app.config import settings
 from app.services.earning import get_or_create_user
 
@@ -34,8 +32,7 @@ async def _send_home(message: Message, user_id: int, first_name: str | None) -> 
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
-    await state.clear()
+async def cmd_start(message: Message, bot: Bot) -> None:
     u = message.from_user
     referred_by = _parse_ref(message.text)
     user = await get_or_create_user(u.id, u.username, u.first_name, referred_by)
@@ -53,11 +50,10 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
     await _send_home(message, u.id, u.first_name)
     if not user.wallet_address:
         await message.answer(ui.need_wallet())
-        await state.set_state(WalletStates.waiting_address)
 
 
 @router.callback_query(F.data == "gate:check")
-async def gate_check(cb: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+async def gate_check(cb: CallbackQuery, bot: Bot) -> None:
     missing = await missing_channels(bot, cb.from_user.id)
     if missing:
         await cb.answer("You haven't joined all channels yet.", show_alert=True)
@@ -70,7 +66,6 @@ async def gate_check(cb: CallbackQuery, bot: Bot, state: FSMContext) -> None:
     )
     if not user.wallet_address:
         await cb.message.answer(ui.need_wallet())
-        await state.set_state(WalletStates.waiting_address)
 
 
 @router.message(F.text == kb.BTN_HELP)

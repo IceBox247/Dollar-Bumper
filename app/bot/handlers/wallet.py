@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 from aiogram import F, Router
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.bot import keyboards as kb
 from app.bot import ui
-from app.bot.states import WalletStates
 from app.db.base import Session
 from app.db.models import User
 from app.services.earning import get_or_create_user
@@ -24,13 +22,20 @@ async def show_wallet(message: Message) -> None:
 
 
 @router.callback_query(F.data == "wallet:update")
-async def ask_wallet(cb: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(WalletStates.waiting_address)
+async def ask_wallet(cb: CallbackQuery) -> None:
+    # No FSM state needed — a valid 0x… address is accepted any time below.
     await cb.message.answer(ui.need_wallet())
     await cb.answer()
 
 
-async def _persist_wallet(message: Message, state: FSMContext, address: str) -> None:
+# Accept a valid BEP20 address ANY time — no FSM state, so it never shadows the
+# menu buttons (which was breaking navigation during onboarding).
+@router.message(F.text.regexp(r"(?i)^\s*0x[0-9a-f]{40}\s*$"))
+async def save_wallet(message: Message) -> None:
+    address = (message.text or "").strip()
+    if not is_valid_evm_address(address):
+        await message.answer(ui.invalid_wallet())
+        return
     checksummed = to_checksum(address)
     async with Session() as s:
         user = await s.get(User, message.from_user.id)
@@ -40,25 +45,4 @@ async def _persist_wallet(message: Message, state: FSMContext, address: str) -> 
             s.add(user)
         user.wallet_address = checksummed
         await s.commit()
-    await state.clear()
     await message.answer(ui.wallet_saved(checksummed))
-
-
-# Accept a valid BEP20 address ANY time (robust to lost FSM state on serverless).
-@router.message(F.text.regexp(r"(?i)^\s*0x[0-9a-f]{40}\s*$"))
-async def save_wallet_anytime(message: Message, state: FSMContext) -> None:
-    address = (message.text or "").strip()
-    if not is_valid_evm_address(address):
-        await message.answer(ui.invalid_wallet())
-        return
-    await _persist_wallet(message, state, address)
-
-
-# While onboarding, give feedback if what they sent isn't a valid address.
-@router.message(WalletStates.waiting_address, F.text, ~F.text.startswith("/"))
-async def save_wallet(message: Message, state: FSMContext) -> None:
-    address = (message.text or "").strip()
-    if not is_valid_evm_address(address):
-        await message.answer(ui.invalid_wallet())
-        return
-    await _persist_wallet(message, state, address)
