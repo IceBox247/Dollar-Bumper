@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     review_threshold: Decimal = Decimal("5.0")
     min_campaign_budget: Decimal = Decimal("10.0")
     # Flag an account when this many OTHER accounts already share its IP.
-    # 1 = strict (any repeat flags); raise it to tolerate shared/NAT IPs.
-    ip_flag_threshold: int = 1
+    # 2 = allow up to 2 accounts per IP, flag the 3rd+ (tolerant of shared/NAT).
+    ip_flag_threshold: int = 2
 
     # Storage
     database_url: str = "sqlite+aiosqlite:///data/dollar_bumper.db"
