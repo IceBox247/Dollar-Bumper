@@ -1,0 +1,17 @@
+name: keepalive
+
+# Keeps Neon (free tier auto-suspends after 5 min) and the webhook function warm
+# so real taps respond instantly on Vercel Hobby. Runs every 5 minutes.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm the database
+        run: curl -sS --max-time 25 "https://dollar-bumper.vercel.app/api/ping" || true
+      - name: Warm the webhook function
+        run: curl -sS --max-time 25 "https://dollar-bumper.vercel.app/api/webhook" || true
