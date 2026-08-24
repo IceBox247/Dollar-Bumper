@@ -170,6 +170,7 @@
   .ch-join{background:linear-gradient(100deg,var(--gold1),var(--gold2));color:#241a00;border:none;border-radius:10px;
     padding:9px 16px;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer}
   .ch-ok{color:var(--green);font-size:20px;font-weight:900}
+  .thint{font-size:11px;color:var(--sub);margin-top:8px;font-weight:600}
 </style>
 </head>
 <body>
@@ -449,28 +450,44 @@ function deviceInfo(){
   toast(ok ? '🛡️ Device verified — one account per person.'
            : '⚠️ Another account was detected on this device/IP. Withdrawals will be reviewed.');
 }
+function openLink(url){
+  if(!url) return;
+  if(url.indexOf('t.me/')>-1){ tg? tg.openTelegramLink(url) : window.open(url,'_blank'); }
+  else { (tg&&tg.openLink)? tg.openLink(url) : window.open(url,'_blank'); }
+}
 async function loadTasks(){
   const box=document.getElementById('tasksList');
   const d = await api('tasks');
   if(!d.ok){ box.innerHTML='<div class="empty">Could not load tasks.</div>'; return; }
-  if(!d.tasks.length){ box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now.<br>Check back soon or invite friends!</div>'; return; }
+  if(!d.tasks.length){ box.innerHTML='<div class="empty"><div class="big">📭</div>No tasks right now.<br>Check back soon!</div>'; return; }
   box.innerHTML='';
   d.tasks.forEach(t=>{
+    const visit = t.kind==='visit';
+    const claimLabel = visit ? '💰 Claim Reward' : '✅ Verify &amp; Claim';
     const c=document.createElement('div'); c.className='card fade';
     c.innerHTML=`<h3>📢 ${escapeHtml(t.title)} <span class="reward">${usdt(t.reward)}</span></h3>
       ${t.description?`<p>${escapeHtml(t.description)}</p>`:''}
-      <p>Join <b>${escapeHtml(t.channel)}</b>, then verify.</p>
-      <button class="btn ghost sm" onclick="openChannel('${t.url}')">📢 Open Channel</button>
-      <button class="btn green sm" id="v${t.id}" onclick="verify(${t.id})">✅ Verify &amp; Claim</button>`;
+      <button class="btn ghost sm" onclick="openTask('${t.url}',${t.id},${visit})">🔗 Open Task</button>
+      <button class="btn green sm" id="v${t.id}" ${visit?'disabled':''} onclick="claimTask(${t.id})">${claimLabel}</button>
+      ${visit?`<div class="thint" id="h${t.id}">Open the task, then claim.</div>`:''}`;
     box.appendChild(c);
   });
 }
-function openChannel(url){ tg ? tg.openTelegramLink(url) : window.open(url,'_blank'); }
-async function verify(id){
-  const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Checking…';
+function openTask(url,id,visit){
+  openLink(url);
+  if(visit){
+    const b=document.getElementById('v'+id), h=document.getElementById('h'+id);
+    if(!b) return;
+    let s=8; b.disabled=true;
+    const iv=setInterval(()=>{ s--; if(h)h.textContent='You can claim in '+s+'s…';
+      if(s<=0){ clearInterval(iv); b.disabled=false; if(h)h.textContent='✅ Ready — tap Claim!'; } },1000);
+  }
+}
+async function claimTask(id){
+  const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Claiming…';
   const d = await api('verify',{campaign_id:id});
-  if(d.ok){ haptic('success'); toast('✅ Verified! '+usdt(d.reward)+' added'); await loadHome(); await loadTasks(); }
-  else{ haptic('error'); toast(d.error||'Not verified'); b.disabled=false; b.innerHTML='✅ Verify &amp; Claim'; }
+  if(d.ok){ haptic('success'); toast('✅ '+usdt(d.reward)+' claimed!'); await loadHome(); await loadTasks(); }
+  else{ haptic('error'); toast(d.error||'Could not claim'); b.disabled=false; b.innerHTML='✅ Claim'; }
 }
 function toggleWallet(){
   const inp=document.getElementById('walletInput'); const btn=document.getElementById('walletBtn');

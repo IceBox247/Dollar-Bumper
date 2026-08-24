@@ -21,6 +21,15 @@ async def member_status(bot: Bot, channel: str, user_id: int) -> tuple[bool, str
         return False, f"{type(e).__name__}: {str(e)[:70]}"
 
 
+async def bot_can_verify(bot: Bot, channel: str) -> bool:
+    """True if the bot is an admin of `channel` (so it can check memberships)."""
+    try:
+        me = await bot.get_chat_member(chat_id=channel, user_id=(await bot.me()).id)
+        return me.status in {"administrator", "creator"}
+    except Exception:  # noqa: BLE001
+        return False
+
+
 async def is_member(bot: Bot, channel: str, user_id: int) -> bool:
     """True if user_id is a member of `channel` (@username or -100... id).
 

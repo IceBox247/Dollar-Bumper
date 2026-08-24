@@ -218,6 +218,86 @@ async def whois(message: Message, command: CommandObject) -> None:
     )
 
 
+@router.message(Command("addtasks"))
+async def addtasks(message: Message, command: CommandObject) -> None:
+    """Bulk-add earn tasks. Paste URLs (one per line) after the command.
+    Optional first line: reward=0.001  (default 0.001)."""
+    if not _is_admin(message.from_user.id):
+        return
+    from app.services.membership import bot_can_verify
+    from app.services.tasks import classify, create_task
+
+    text = command.args or ""
+    reward = Decimal("0.001")
+    urls: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.lower().startswith("reward="):
+            try:
+                reward = Decimal(line.split("=", 1)[1].strip())
+            except (InvalidOperation, IndexError):
+                pass
+            continue
+        m = re.search(r"https?://\S+", line)
+        if m:
+            urls.append(m.group())
+    if not urls:
+        await message.answer(
+            "Paste task URLs (one per line) after the command.\n"
+            "Optional first line: <code>reward=0.001</code>\n\n"
+            "Example:\n<code>/addtasks\nreward=0.001\nhttps://t.me/YourChannel\n"
+            "https://whatsapp.com/channel/xxxx</code>"
+        )
+        return
+
+    created = 0
+    for url in urls:
+        kind, ch, ln, title = classify(url)
+        # A channel is only "verify" if the bot is actually admin there.
+        if kind == "channel" and ch and not await bot_can_verify(message.bot, ch):
+            kind, ln, ch = "visit", url, None
+        await create_task(kind, title, ch, ln, reward, message.from_user.id)
+        created += 1
+    await message.answer(
+        f"✅ Added <b>{created}</b> task(s) at {usdt(reward)} each.\n"
+        "Channels where the bot is admin are auto-verified; everything else is "
+        "open-and-claim. Use /tasks to review."
+    )
+
+
+@router.message(Command("tasks"))
+async def list_tasks_admin(message: Message) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    from app.services.tasks import all_tasks
+
+    ts = await all_tasks()
+    if not ts:
+        await message.answer("No tasks yet. Add some with /addtasks.")
+        return
+    lines = ["📋 <b>Tasks</b> (newest first):"]
+    for c in ts[:60]:
+        tag = "✅verify" if c.kind == "channel" else "🔗visit"
+        lines.append(f"#{c.id} {tag} · {c.title} · {usdt(c.reward_per_task)} · {c.status}")
+    await message.answer("\n".join(lines))
+
+
+@router.message(Command("deltask"))
+async def deltask(message: Message, command: CommandObject) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    m = re.search(r"\d+", command.args or "")
+    if not m:
+        await message.answer("Usage: /deltask 12")
+        return
+    from app.services.tasks import delete_task
+
+    ok = await delete_task(int(m.group()))
+    await message.answer("🗑️ Task deleted." if ok else "Task not found.")
+
+
 @router.message(Command("checkjoin"))
 async def checkjoin(message: Message, command: CommandObject) -> None:
     """Diagnose channel-membership checks. /checkjoin [user_id]"""

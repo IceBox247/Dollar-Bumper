@@ -31,6 +31,13 @@ def classify(url: str) -> tuple[str, str | None, str | None, str]:
         if "start=" in query or "startapp=" in query:
             return "visit", None, url, f"Open @{name}"
         return "channel", f"@{name}", None, f"Join @{name}"
+    low = url.lower()
+    if "whatsapp.com" in low or "wa.me" in low:
+        return "visit", None, url, "Follow on WhatsApp"
+    if "youtube.com" in low or "youtu.be" in low:
+        return "visit", None, url, "Subscribe on YouTube"
+    if "x.com" in low or "twitter.com" in low:
+        return "visit", None, url, "Follow on X"
     return "visit", None, url, "Open link"
 
 
