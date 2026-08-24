@@ -218,6 +218,27 @@ async def whois(message: Message, command: CommandObject) -> None:
     )
 
 
+@router.message(Command("checkjoin"))
+async def checkjoin(message: Message, command: CommandObject) -> None:
+    """Diagnose channel-membership checks. /checkjoin [user_id]"""
+    if not _is_admin(message.from_user.id):
+        return
+    uid = _uid(command.args) or message.from_user.id
+    if not settings.required_channels:
+        await message.answer("No REQUIRED_CHANNELS configured.")
+        return
+    lines = [f"🔎 Channel check for <code>{uid}</code>:"]
+    for ch in settings.required_channels:
+        try:
+            m = await message.bot.get_chat_member(ch, uid)
+            lines.append(f"• {ch} → <b>{m.status}</b>")
+        except Exception as e:  # noqa: BLE001
+            lines.append(f"• {ch} → ⚠️ {type(e).__name__}: {str(e)[:80]}")
+    lines.append("\nIf you see an error, the bot isn't admin of that channel "
+                 "(or the @username is wrong).")
+    await message.answer("\n".join(lines))
+
+
 @router.message(Command("unflag"))
 async def unflag(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
