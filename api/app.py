@@ -32,8 +32,10 @@ async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
 
     if action == "home":
         return await service.home_state(user, bot, ip)
+    if action == "channels":
+        return await service.channels_status(user, bot)
     if action == "onboard":
-        return await service.complete_onboarding(user)
+        return await service.complete_onboarding(user, bot)
     if action == "leaderboard":
         return await service.leaderboard(user)
     if action == "tasks":

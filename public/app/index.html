@@ -164,6 +164,12 @@
     display:flex;align-items:center;justify-content:center;font-size:54px;margin:0 auto 20px;animation:pop .4s}
   @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
   .banner{width:100%;border-radius:18px;box-shadow:0 18px 44px -18px rgba(0,0,0,.75);margin-bottom:22px}
+  .ch-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:13px 15px;margin-bottom:10px}
+  .ch-row .cn{font-weight:800;font-size:14px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ch-join{background:linear-gradient(100deg,var(--gold1),var(--gold2));color:#241a00;border:none;border-radius:10px;
+    padding:9px 16px;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer}
+  .ch-ok{color:var(--green);font-size:20px;font-weight:900}
 </style>
 </head>
 <body>
@@ -268,7 +274,7 @@
 
 <!-- ONBOARDING -->
 <div class="overlay hidden" id="onboard">
-  <div class="progress"><span id="p1"></span><span id="p2"></span><span id="p3"></span></div>
+  <div class="progress"><span id="p1"></span><span id="p2"></span><span id="p3"></span><span id="p4"></span></div>
 
   <div class="ob-step" id="ob-human">
     <img class="ob-logo" src="/app/logo.png" alt="" />
@@ -285,6 +291,14 @@
       <div class="ob-p">Checking your IP address to prevent multiple accounts.</div>
     </div>
     <div id="ipResult" class="hidden"></div>
+  </div>
+
+  <div class="ob-step hidden" id="ob-channels">
+    <img class="ob-logo" src="/app/logo.png" alt="" />
+    <div class="ob-h">Join to unlock 🔓</div>
+    <div class="ob-p">Join our official channels to activate your account.</div>
+    <div id="chList"></div>
+    <button class="btn green" id="chBtn" onclick="verifyChannels()">✅ I've Joined</button>
   </div>
 
   <div class="ob-step hidden" id="ob-welcome">
@@ -371,20 +385,49 @@ function gotoIp(){
     const r=document.getElementById('ipResult'); r.classList.remove('hidden');
     const ok = STATE && STATE.device_ok;
     r.innerHTML = ok
-      ? '<div class="check">✅</div><div class="ob-h">Device Verified</div><div class="ob-p">You\'re unique — one account per person.</div><button class="btn green" onclick="gotoWelcome()">Continue</button>'
-      : '<div class="check" style="border-color:#ffb84d;background:rgba(255,184,77,.12)">⚠️</div><div class="ob-h">Multiple Accounts Detected</div><div class="ob-p">You can continue, but your withdrawals will be manually reviewed.</div><button class="btn gold" onclick="gotoWelcome()">Continue Anyway</button>';
+      ? '<div class="check">✅</div><div class="ob-h">Device Verified</div><div class="ob-p">You\'re unique — one account per person.</div><button class="btn green" onclick="gotoChannels()">Continue</button>'
+      : '<div class="check" style="border-color:#ffb84d;background:rgba(255,184,77,.12)">⚠️</div><div class="ob-h">Multiple Accounts Detected</div><div class="ob-p">You can continue, but your withdrawals will be manually reviewed.</div><button class="btn gold" onclick="gotoChannels()">Continue Anyway</button>';
     haptic(ok?'success':'warning');
   }, 1900);
 }
+async function gotoChannels(){
+  document.getElementById('ob-ip').classList.add('hidden');
+  document.getElementById('ob-channels').classList.remove('hidden');
+  setStep(3);
+  await loadChannels();
+}
+async function loadChannels(){
+  const d = await api('channels');
+  const list=document.getElementById('chList');
+  if(!d.ok || !d.channels.length){ gotoWelcome(); return; }  // none required -> skip
+  list.innerHTML='';
+  d.channels.forEach(c=>{
+    const row=document.createElement('div'); row.className='ch-row';
+    row.innerHTML=`<span class="cn">📢 ${escapeHtml(c.username)}</span>`+
+      (c.joined ? '<span class="ch-ok">✅</span>'
+                : `<button class="ch-join" onclick="openChannel('${c.url}')">Join</button>`);
+    list.appendChild(row);
+  });
+}
+async function verifyChannels(){
+  const b=document.getElementById('chBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Checking…';
+  const d = await api('channels');
+  await loadChannels();
+  b.disabled=false; b.innerHTML='✅ I\'ve Joined';
+  if(d.ok && d.all_joined){ haptic('success'); gotoWelcome(); }
+  else{ haptic('error'); toast('Please join all channels first, then tap again.'); }
+}
 function gotoWelcome(){
   document.getElementById('ob-ip').classList.add('hidden');
+  document.getElementById('ob-channels').classList.add('hidden');
   document.getElementById('ob-welcome').classList.remove('hidden');
-  setStep(3);
+  setStep(4);
 }
 async function finishOnboard(){
+  const d = await api('onboard');
+  if(d && d.ok===false && d.need_channels){ toast('Join all channels first.'); gotoChannels(); return; }
   haptic('success');
   document.getElementById('onboard').classList.add('hidden');
-  try{ await api('onboard'); }catch(e){}
 }
 function deviceInfo(){
   const ok = STATE && STATE.device_ok;

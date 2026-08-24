@@ -129,7 +129,27 @@ async def leaderboard(u: WebAppUser) -> dict:
     }
 
 
-async def complete_onboarding(u: WebAppUser) -> dict:
+async def channels_status(u: WebAppUser, bot: Bot) -> dict:
+    """Required channels + whether the user has joined each."""
+    result = []
+    all_joined = True
+    for ch in settings.required_channels:
+        joined = await is_member(bot, ch, u.id)
+        if not joined:
+            all_joined = False
+        result.append({
+            "username": ch,
+            "url": f"https://t.me/{ch.lstrip('@')}",
+            "joined": joined,
+        })
+    return {"ok": True, "channels": result, "all_joined": all_joined}
+
+
+async def complete_onboarding(u: WebAppUser, bot: Bot) -> dict:
+    # Enforce channel membership server-side (not just in the UI).
+    for ch in settings.required_channels:
+        if not await is_member(bot, ch, u.id):
+            return {"ok": False, "error": "Please join all channels first.", "need_channels": True}
     async with Session() as s:
         user = await s.get(User, u.id)
         if user is None:
