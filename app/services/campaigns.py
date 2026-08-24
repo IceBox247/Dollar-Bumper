@@ -12,7 +12,6 @@ from app.config import settings
 from app.constants import CampaignStatus
 from app.db.base import Session
 from app.db.models import Campaign, ProcessedTx
-from app.services.chain import chain
 from app.utils.format import q
 
 log = logging.getLogger(__name__)
@@ -66,6 +65,8 @@ async def verify_and_activate(campaign_id: int, tx_hash: str) -> VerifyResult:
         # Prevent the same tx from funding multiple campaigns.
         if await s.get(ProcessedTx, tx_hash) is not None:
             return VerifyResult(False, "This transaction has already been used.")
+
+        from app.services.chain import chain  # lazy: keeps web3 out of cold starts
 
         check = await chain.verify_payment(
             tx_hash, settings.project_wallet_address, q(campaign.budget_total)

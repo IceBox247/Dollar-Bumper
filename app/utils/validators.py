@@ -1,25 +1,28 @@
-"""Input validation helpers."""
+"""Input validation helpers.
+
+Deliberately dependency-free (no web3 import) so importing this module — and
+therefore the whole bot dispatcher — stays fast on serverless cold starts.
+The chain layer applies EIP-55 checksumming at payout time.
+"""
 from __future__ import annotations
 
 import re
 
-from web3 import Web3
-
 _TG_USERNAME_RE = re.compile(r"^@?[A-Za-z0-9_]{4,32}$")
+_EVM_ADDR_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 
 
 def is_valid_evm_address(address: str) -> bool:
-    """True if the string is a well-formed EVM/BEP20 address (checksum-agnostic)."""
+    """True if the string is a well-formed EVM/BEP20 address (format check)."""
     if not isinstance(address, str):
         return False
-    address = address.strip()
-    if not re.fullmatch(r"0x[a-fA-F0-9]{40}", address):
-        return False
-    return Web3.is_address(address)
+    return bool(_EVM_ADDR_RE.fullmatch(address.strip()))
 
 
 def to_checksum(address: str) -> str:
-    return Web3.to_checksum_address(address.strip())
+    """Normalize for storage. We keep the address as provided (trimmed); the
+    payout path checksums it when building the transaction."""
+    return address.strip()
 
 
 def normalize_channel(raw: str) -> str | None:
@@ -27,7 +30,6 @@ def normalize_channel(raw: str) -> str | None:
     if not raw:
         return None
     raw = raw.strip()
-    # extract from t.me links
     m = re.search(r"t\.me/([A-Za-z0-9_]{4,32})", raw)
     if m:
         raw = m.group(1)
