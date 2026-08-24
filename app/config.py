@@ -57,7 +57,15 @@ class Settings(BaseSettings):
     )
     @classmethod
     def _blank_decimal_to_default(cls, v, info):
-        if v is None or (isinstance(v, str) and v.strip() == ""):
+        if isinstance(v, str):
+            # Tolerate values like "$0.01", "1,0", "5 USDT".
+            cleaned = (
+                v.replace("$", "").replace(",", ".").replace("USDT", "").strip()
+            )
+            if cleaned == "":
+                return _DECIMAL_DEFAULTS[info.field_name]
+            return cleaned
+        if v is None:
             return _DECIMAL_DEFAULTS[info.field_name]
         return v
 
