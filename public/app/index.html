@@ -119,6 +119,33 @@
   @keyframes rot{to{transform:rotate(360deg)}}
   .fade{animation:fade .35s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* onboarding overlay */
+  .overlay{position:fixed;inset:0;z-index:100;padding:26px 22px;text-align:center;overflow-y:auto;
+    background:radial-gradient(circle at 50% -10%,#0a3a1e,#03150c 60%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .overlay.hidden{display:none}
+  .progress{display:flex;gap:7px;justify-content:center;margin-bottom:28px}
+  .progress span{width:30px;height:4px;border-radius:2px;background:rgba(255,255,255,.14);transition:.3s}
+  .progress span.on{background:linear-gradient(90deg,var(--gold1),var(--gold2))}
+  .ob-step{max-width:440px;width:100%;animation:fade .35s}
+  .ob-logo{width:86px;height:86px;border-radius:50%;box-shadow:0 0 0 2px rgba(40,224,122,.35),0 0 34px var(--glow);margin-bottom:20px}
+  .ob-h{font-size:22px;font-weight:900;margin-bottom:8px}
+  .ob-p{font-size:14px;color:var(--sub);line-height:1.6;margin-bottom:22px}
+  .puzzle{font-size:36px;font-weight:900;margin:4px 0 20px;letter-spacing:.02em;
+    background:linear-gradient(90deg,var(--gold1),#ffe9a0 55%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:20px;font-size:22px;
+    font-weight:900;color:var(--txt);cursor:pointer;transition:transform .09s,border-color .2s}
+  .opt:active{transform:scale(.95)}
+  .opt.shake{animation:shk .4s;border-color:var(--red)}
+  @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+  .ring{width:118px;height:118px;border-radius:50%;border:4px solid rgba(40,224,122,.18);
+    border-top-color:var(--green);animation:rot 1s linear infinite;margin:0 auto 22px}
+  .check{width:118px;height:118px;border-radius:50%;background:rgba(40,224,122,.12);border:3px solid var(--green);
+    display:flex;align-items:center;justify-content:center;font-size:54px;margin:0 auto 20px;animation:pop .4s}
+  @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .banner{width:100%;border-radius:18px;box-shadow:0 18px 44px -18px rgba(0,0,0,.75);margin-bottom:22px}
 </style>
 </head>
 <body>
@@ -210,6 +237,35 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- ONBOARDING -->
+<div class="overlay hidden" id="onboard">
+  <div class="progress"><span id="p1"></span><span id="p2"></span><span id="p3"></span></div>
+
+  <div class="ob-step" id="ob-human">
+    <img class="ob-logo" src="/app/logo.png" alt="" />
+    <div class="ob-h">Verify you're human 🤖</div>
+    <div class="ob-p">A quick check keeps Dollar Bumper fair for real users.</div>
+    <div class="puzzle" id="puzzleQ">? + ? = ?</div>
+    <div class="opts" id="puzzleOpts"></div>
+  </div>
+
+  <div class="ob-step hidden" id="ob-ip">
+    <div id="ipSpinner">
+      <div class="ring"></div>
+      <div class="ob-h">Verifying your device…</div>
+      <div class="ob-p">Checking your IP address to prevent multiple accounts.</div>
+    </div>
+    <div id="ipResult" class="hidden"></div>
+  </div>
+
+  <div class="ob-step hidden" id="ob-welcome">
+    <img class="banner" src="/app/welcome.jpg" alt="Welcome to Dollar Bumper" />
+    <div class="ob-h">You're all set, Bumper! 🎉</div>
+    <div class="ob-p">Complete tasks, invite friends, and stack up real USDT — paid on-chain, no conditions.</div>
+    <button class="btn gold" onclick="finishOnboard()">🚀 Enter Dollar Bumper</button>
+  </div>
+</div>
+
 <script>
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#03150c');tg.setBackgroundColor('#03150c');}catch(e){} }
@@ -248,6 +304,58 @@ async function loadHome(){
     document.getElementById('deviceTxt').textContent='Verified'; }
   else{ tile.className='tile amber'; document.getElementById('deviceIc').textContent='⚠️';
     document.getElementById('deviceTxt').textContent='Under review'; }
+  if(!d.onboarded){ showOnboarding(); }
+}
+
+/* ---- Onboarding flow: human check -> IP verify -> welcome ---- */
+let puzzleAns=0;
+function setStep(n){ ['p1','p2','p3'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',i<n)); }
+function showOnboarding(){
+  document.getElementById('onboard').classList.remove('hidden');
+  document.getElementById('ob-human').classList.remove('hidden');
+  document.getElementById('ob-ip').classList.add('hidden');
+  document.getElementById('ob-welcome').classList.add('hidden');
+  setStep(1); newPuzzle();
+}
+function newPuzzle(){
+  const a=2+Math.floor(Math.random()*8), b=2+Math.floor(Math.random()*8); puzzleAns=a+b;
+  document.getElementById('puzzleQ').textContent=`${a} + ${b} = ?`;
+  const set=new Set([puzzleAns]);
+  while(set.size<4){ let v=puzzleAns+(Math.floor(Math.random()*9)-4); if(v>0)set.add(v); }
+  const arr=[...set].sort(()=>Math.random()-0.5);
+  const box=document.getElementById('puzzleOpts'); box.innerHTML='';
+  arr.forEach(v=>{ const el=document.createElement('div'); el.className='opt'; el.textContent=v;
+    el.onclick=()=>checkPuzzle(v,el); box.appendChild(el); });
+}
+function checkPuzzle(v,el){
+  if(v===puzzleAns){ haptic('success'); gotoIp(); }
+  else{ haptic('error'); el.classList.add('shake'); setTimeout(()=>{el.classList.remove('shake');newPuzzle();},420); }
+}
+function gotoIp(){
+  document.getElementById('ob-human').classList.add('hidden');
+  document.getElementById('ob-ip').classList.remove('hidden');
+  document.getElementById('ipSpinner').classList.remove('hidden');
+  document.getElementById('ipResult').classList.add('hidden');
+  setStep(2);
+  setTimeout(()=>{
+    document.getElementById('ipSpinner').classList.add('hidden');
+    const r=document.getElementById('ipResult'); r.classList.remove('hidden');
+    const ok = STATE && STATE.device_ok;
+    r.innerHTML = ok
+      ? '<div class="check">✅</div><div class="ob-h">Device Verified</div><div class="ob-p">You\'re unique — one account per person.</div><button class="btn green" onclick="gotoWelcome()">Continue</button>'
+      : '<div class="check" style="border-color:#ffb84d;background:rgba(255,184,77,.12)">⚠️</div><div class="ob-h">Multiple Accounts Detected</div><div class="ob-p">You can continue, but your withdrawals will be manually reviewed.</div><button class="btn gold" onclick="gotoWelcome()">Continue Anyway</button>';
+    haptic(ok?'success':'warning');
+  }, 1900);
+}
+function gotoWelcome(){
+  document.getElementById('ob-ip').classList.add('hidden');
+  document.getElementById('ob-welcome').classList.remove('hidden');
+  setStep(3);
+}
+async function finishOnboard(){
+  haptic('success');
+  document.getElementById('onboard').classList.add('hidden');
+  try{ await api('onboard'); }catch(e){}
 }
 function deviceInfo(){
   const ok = STATE && STATE.device_ok;

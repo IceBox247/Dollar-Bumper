@@ -72,6 +72,7 @@ _initialized = False
 _MIGRATIONS = [
     ("users", "signup_ip", "VARCHAR(64)"),
     ("users", "flagged", "BOOLEAN DEFAULT FALSE"),
+    ("users", "onboarded", "BOOLEAN DEFAULT FALSE"),
 ]
 
 

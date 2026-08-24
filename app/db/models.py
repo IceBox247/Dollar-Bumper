@@ -47,6 +47,7 @@ class User(Base):
     # account already uses the same IP.
     signup_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     flagged: Mapped[bool] = mapped_column(Boolean, default=False)
+    onboarded: Mapped[bool] = mapped_column(Boolean, default=False)
 
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

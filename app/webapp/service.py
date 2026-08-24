@@ -68,6 +68,7 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
         "invites": int(invites or 0),
         "is_admin": settings.is_admin(user.id),
         "device_ok": device_ok,
+        "onboarded": bool(row.onboarded),
         "referral_link": f"https://t.me/{_bot_username}?start={user.id}",
         "config": {
             "referral_reward": _q(settings.referral_reward),
@@ -77,6 +78,16 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
             "network": "BEP20 (BSC)",
         },
     }
+
+
+async def complete_onboarding(u: WebAppUser) -> dict:
+    async with Session() as s:
+        user = await s.get(User, u.id)
+        if user is None:
+            return {"ok": False, "error": "User not found."}
+        user.onboarded = True
+        await s.commit()
+    return {"ok": True}
 
 
 async def tasks_list(u: WebAppUser) -> dict:
