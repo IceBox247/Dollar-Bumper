@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dollar Bumper</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh; display: grid; place-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1b2a4a 0%, #0b0f19 55%);
+    color: #e8edf7; text-align: center; padding: 24px;
+  }
+  .card {
+    max-width: 460px; width: 100%;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 40px 28px; backdrop-filter: blur(8px);
+  }
+  .logo { font-size: 48px; margin-bottom: 8px; }
+  h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px; margin: 18px 0 22px;
+    font-size: 13px; font-weight: 600; color: #34d399;
+    background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25);
+    padding: 6px 14px; border-radius: 999px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399;
+    box-shadow: 0 0 0 0 rgba(52,211,153,0.6); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,211,153,0.5)} 70%{box-shadow:0 0 0 10px rgba(52,211,153,0)} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} }
+  p { color: #9fb0cc; line-height: 1.6; font-size: 15px; }
+  .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+  a.btn {
+    display: block; text-decoration: none; font-weight: 700; font-size: 15px;
+    padding: 14px; border-radius: 12px; transition: transform .08s ease;
+  }
+  a.btn:active { transform: scale(0.98); }
+  .primary { background: linear-gradient(135deg,#3b82f6,#6366f1); color: #fff; }
+  .ghost { background: rgba(255,255,255,0.06); color: #cdd8ee; border: 1px solid rgba(255,255,255,0.1); }
+  .foot { margin-top: 22px; font-size: 12px; color: #5f6f8c; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">💵</div>
+    <h1>Dollar Bumper</h1>
+    <div class="status"><span class="dot"></span> Service online</div>
+    <p>A real paid-advertising marketplace on Telegram. Projects pay to be
+       featured; users earn real USDT for tasks and referrals — paid on-chain.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://t.me/dollarbumper">📢 Join the channel</a>
+      <a class="btn ghost" href="https://t.me/dollarbumperpayout">🧾 Payout proofs</a>
+    </div>
+    <div class="foot">This page is a status endpoint. The bot lives on Telegram.</div>
+  </div>
+</body>
+</html>
