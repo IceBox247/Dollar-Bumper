@@ -1,8 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/webhook.py": { "maxDuration": 10 },
-    "api/cron.py": { "maxDuration": 10 }
+    "api/*.py": {
+      "maxDuration": 10,
+      "includeFiles": "app/**"
+    }
   },
   "crons": [
     { "path": "/api/cron", "schedule": "0 3 * * *" }
