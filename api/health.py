@@ -42,13 +42,32 @@ async def _gather() -> dict:
 
         usdt_bal = await chain.payout_balance()
         bnb_bal = await chain.gas_balance()
-        out["checks"]["chain"] = {
+        chain_info = {
             "ok": True,
             "payout_wallet": settings.payout_wallet_address,
             "usdt": str(usdt_bal),
             "bnb_gas": f"{bnb_bal:.6f}",
             "low_gas": bnb_bal < 0.005,
         }
+        # The wallet that ACTUALLY signs payouts is derived from the private key.
+        # If it doesn't match PAYOUT_WALLET_ADDRESS, funding the configured
+        # address does nothing — surface that loudly.
+        try:
+            signer = await chain.signer_address()
+            chain_info["signer_wallet"] = signer
+            chain_info["signer_matches_config"] = (
+                signer.lower() == (settings.payout_wallet_address or "").lower()
+            )
+            if not chain_info["signer_matches_config"]:
+                chain_info["warning"] = (
+                    "PAYOUT_WALLET_ADDRESS does not match the private key's address; "
+                    "payouts are sent from signer_wallet — fund THAT one."
+                )
+                out["ok"] = False
+        except Exception as e:  # noqa: BLE001
+            chain_info["signer_error"] = str(e)[:200]
+            out["ok"] = False
+        out["checks"]["chain"] = chain_info
     except Exception as e:  # noqa: BLE001
         out["ok"] = False
         out["checks"]["chain"] = {"ok": False, "error": str(e)[:200]}

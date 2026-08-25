@@ -143,19 +143,48 @@ class Chain:
             return PaymentCheck(False, total, sender, f"Paid {total} USDT, below the required minimum.")
         return PaymentCheck(True, total, sender)
 
+    def _signer_address_sync(self) -> str:
+        if not settings.payout_wallet_private_key:
+            raise RuntimeError("PAYOUT_WALLET_PRIVATE_KEY is not set.")
+        return self.w3.eth.account.from_key(settings.payout_wallet_private_key).address
+
     def _broadcast_usdt_sync(self, to_address: str, amount: Decimal) -> str:
         """Sign & broadcast a USDT transfer and return the tx hash WITHOUT
-        waiting for the receipt (safe for short serverless timeouts)."""
+        waiting for the receipt (safe for short serverless timeouts).
+
+        Preflights against the ACTUAL sending wallet (derived from the private
+        key) so a misfunded or mismatched hot wallet fails with a clear reason
+        instead of emitting a transaction that can never confirm."""
+        if not settings.payout_wallet_private_key:
+            raise RuntimeError("PAYOUT_WALLET_PRIVATE_KEY is not set — can't send payouts.")
         acct = self.w3.eth.account.from_key(settings.payout_wallet_private_key)
         to_address = Web3.to_checksum_address(to_address)
         units = self._to_units(amount)
+
+        # Enough USDT to cover the transfer?
+        have_usdt = int(self.usdt.functions.balanceOf(acct.address).call())
+        if have_usdt < units:
+            raise RuntimeError(
+                f"Hot wallet {acct.address} holds {self._from_units(have_usdt)} USDT "
+                f"but needs {amount}. Fund PAYOUT_WALLET_ADDRESS with USDT (BEP20)."
+            )
+
+        # BSC has a minimum gas price; floor it so the tx actually gets mined.
+        gas_price = max(int(self.w3.eth.gas_price), self.w3.to_wei(1, "gwei"))
+        gas_limit = 100_000
+        have_bnb = int(self.w3.eth.get_balance(acct.address))
+        if have_bnb < gas_price * gas_limit:
+            raise RuntimeError(
+                f"Hot wallet {acct.address} is low on BNB for gas "
+                f"({self.w3.from_wei(have_bnb, 'ether')} BNB). Fund it with a little BNB."
+            )
 
         tx = self.usdt.functions.transfer(to_address, units).build_transaction(
             {
                 "from": acct.address,
                 "nonce": self.w3.eth.get_transaction_count(acct.address, "pending"),
-                "gas": 100_000,
-                "gasPrice": self.w3.eth.gas_price,
+                "gas": gas_limit,
+                "gasPrice": gas_price,
                 "chainId": self.w3.eth.chain_id,
             }
         )
@@ -185,6 +214,9 @@ class Chain:
 
     async def broadcast_usdt(self, to_address: str, amount: Decimal) -> str:
         return await asyncio.to_thread(self._broadcast_usdt_sync, to_address, amount)
+
+    async def signer_address(self) -> str:
+        return await asyncio.to_thread(self._signer_address_sync)
 
     async def tx_status(self, tx_hash: str) -> str:
         return await asyncio.to_thread(self._tx_status_sync, tx_hash)

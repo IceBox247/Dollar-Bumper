@@ -123,6 +123,13 @@ async def broadcast_payout(withdrawal_id: int, bot: Bot) -> None:
         await _safe_dm(bot, uid,
             "⚠️ Your withdrawal couldn't be sent and your balance was refunded. "
             "Please try again shortly.")
+        # Tell admins the real reason (e.g. hot wallet out of USDT/BNB).
+        for admin_id in settings.admin_ids:
+            await _safe_dm(
+                bot, admin_id,
+                f"❌ Payout #{withdrawal_id} FAILED and was refunded:\n"
+                f"{type(e).__name__}: {str(e)[:200]}",
+            )
         return
 
     async with Session() as s:
