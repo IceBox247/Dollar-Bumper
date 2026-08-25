@@ -250,8 +250,17 @@
     <div class="card">
       <h3>💸 Cash Out</h3>
       <p>Balance: <b id="wBalance">—</b><br>Minimum: <b id="wMin">—</b> · Network: BEP20 (BSC)</p>
-      <input class="input" id="amountInput" inputmode="decimal" placeholder="Amount in USDT (blank = all)" />
-      <button class="btn gold" id="wBtn" onclick="doWithdraw()">💸 Withdraw</button>
+
+      <div style="background:rgba(3,18,10,.5);border:1px solid var(--line);border-radius:13px;padding:12px;margin-top:14px">
+        <div class="thint" style="margin:0 0 5px">👛 Payout wallet <span style="color:var(--sub)">— where you get paid</span></div>
+        <p class="mono" id="wWalletAddr">Not set</p>
+        <input class="input hidden" id="wWalletInput" placeholder="0x… your BEP20 (USDT) address" />
+        <button class="btn ghost sm" id="wWalletBtn" onclick="wToggleWallet()">✏️ Set / Update Wallet</button>
+      </div>
+
+      <div class="thint" style="margin:14px 0 0">💵 Amount to withdraw (USDT)</div>
+      <input class="input" id="amountInput" inputmode="decimal" placeholder="e.g. 0.06 — leave blank to withdraw all" style="margin-top:6px" />
+      <button class="btn gold" id="wBtn" onclick="doWithdraw()">💸 Withdraw to my wallet</button>
     </div>
     <p class="empty" style="font-size:12px;padding:14px">🧾 Every real payout is posted publicly with a BscScan link.</p>
   </div>
@@ -380,6 +389,7 @@ function applyHome(d){
   document.getElementById('refEarned2').textContent = usdt(d.referral_earned);
   document.getElementById('wBalance').textContent = usdt(d.balance);
   document.getElementById('wMin').textContent = usdt(d.config.min_withdrawal);
+  const wAddr=document.getElementById('wWalletAddr'); if(wAddr) wAddr.textContent = d.wallet || 'Not set — tap Set Wallet';
   const tile=document.getElementById('deviceTile');
   if(d.device_ok){ tile.className='tile green'; document.getElementById('deviceIc').textContent='🛡️';
     document.getElementById('deviceTxt').textContent='Verified'; }
@@ -602,13 +612,26 @@ function copyLink(){ const l=STATE?STATE.referral_link:''; if(!l){ toast('Link n
 function shareLink(){ const l=STATE?STATE.referral_link:''; if(!l){ toast('Link not ready — reopen in a moment.'); return; }
   const u='https://t.me/share/url?url='+encodeURIComponent(l)+'&text='+encodeURIComponent('Earn real USDT with Dollar Bumper! 👇');
   tg ? tg.openTelegramLink(u) : window.open(u,'_blank'); }
+function wToggleWallet(){
+  const inp=document.getElementById('wWalletInput'); const btn=document.getElementById('wWalletBtn');
+  if(inp.classList.contains('hidden')){ inp.classList.remove('hidden'); inp.value=(STATE&&STATE.wallet)||'';
+    btn.textContent='💾 Save Wallet'; inp.focus(); } else { wSaveWallet(); }
+}
+async function wSaveWallet(){
+  const inp=document.getElementById('wWalletInput'); const btn=document.getElementById('wWalletBtn');
+  const d=await api('set_wallet',{address:inp.value.trim()});
+  if(d.ok){ haptic('success'); toast('🎉 Payout wallet saved'); inp.classList.add('hidden');
+    btn.textContent='✏️ Set / Update Wallet'; await loadHome(); }
+  else { haptic('error'); toast(d.error||'Invalid address'); }
+}
 async function doWithdraw(){
+  if(!(STATE&&STATE.wallet)){ haptic('error'); toast('Set your payout wallet first ☝️'); wToggleWallet(); return; }
   const b=document.getElementById('wBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Processing…';
   const amt=document.getElementById('amountInput').value.trim();
   const d = await api('withdraw',{amount:amt||'all'});
-  if(d.ok){ haptic('success'); toast(d.message||'Requested'); await loadHome(); }
+  if(d.ok){ haptic('success'); toast(d.message||'Requested'); document.getElementById('amountInput').value=''; await loadHome(); }
   else{ haptic('error'); toast(d.error||d.message||'Failed'); }
-  b.disabled=false; b.innerHTML='💸 Withdraw';
+  b.disabled=false; b.innerHTML='💸 Withdraw to my wallet';
 }
 function go(tab){
   ['home','tasks','ranks','invite','withdraw','advertise'].forEach(t=>{
