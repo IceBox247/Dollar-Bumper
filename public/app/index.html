@@ -313,7 +313,24 @@
 <script>
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#03150c');tg.setBackgroundColor('#03150c');}catch(e){} }
-const initData = tg ? tg.initData : '';
+// initData usually comes from tg.initData, but on some launch paths Telegram
+// only puts it in the URL (hash or query) — fall back to that so the app still
+// signs in instead of showing "Open from Telegram".
+function readInitData(){
+  if(tg && tg.initData) return tg.initData;
+  try{
+    const hash = (location.hash||'').replace(/^#/,'');
+    const qs = (location.search||'').replace(/^\?/,'');
+    for(const src of [hash, qs]){
+      if(!src) continue;
+      const p = new URLSearchParams(src);
+      const d = p.get('tgWebAppData');
+      if(d) return d;
+    }
+  }catch(e){}
+  return '';
+}
+let initData = readInitData();
 let STATE = null;
 
 function haptic(t){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t); }catch(e){} }
@@ -625,14 +642,26 @@ function renderLb(){
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-if(!initData){
+function showOpenFromTelegram(){
   document.querySelector('.wrap').innerHTML =
     '<div class="empty" style="padding-top:120px"><img src="/app/logo.png" style="width:96px;height:96px;border-radius:50%;box-shadow:0 0 30px rgba(40,224,122,.5);margin-bottom:18px"><div style="font-size:16px;color:#eafaef;font-weight:700">Open from Telegram</div><div style="margin-top:6px">Launch this from the Dollar Bumper bot to sign in.</div></div>';
-}else{
+}
+function boot(){
   // Instant paint from last-known state, then refresh in the background.
   const cached = cacheGet();
   if(cached && cached.onboarded){ applyHome(cached); }
   loadHome();
+}
+if(initData){ boot(); }
+else if(!tg){ showOpenFromTelegram(); }   // truly outside Telegram
+else {
+  // Inside Telegram but initData not ready yet — retry briefly before giving up.
+  let tries=0;
+  const iv=setInterval(()=>{
+    initData = readInitData(); tries++;
+    if(initData){ clearInterval(iv); boot(); }
+    else if(tries>=10){ clearInterval(iv); showOpenFromTelegram(); }  // ~2.5s
+  }, 250);
 }
 </script>
 </body>
