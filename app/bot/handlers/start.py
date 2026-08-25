@@ -72,11 +72,12 @@ async def cmd_start(message: Message, bot: Bot) -> None:
 async def gate_check(cb: CallbackQuery, bot: Bot) -> None:
     detailed = await missing_channels_detailed(bot, cb.from_user.id)
     if detailed:
-        # Surface the exact channel + reason (an error => bot not admin there).
-        lines = "\n".join(f"{c} → {r}" for c, r in detailed)
+        # User-facing: just name the channel(s) still to join — no raw status
+        # or admin hints (those are diagnostics, see /checkadmin for admins).
+        names = ", ".join(c for c, _ in detailed)
         await cb.answer(
-            f"Not verified yet:\n{lines}\n\n"
-            "If it says an error, the bot must be an ADMIN of that channel.",
+            f"We couldn't confirm you joined {names} yet. "
+            "Make sure you've joined, then tap ✅ I've Joined again.",
             show_alert=True,
         )
         return
