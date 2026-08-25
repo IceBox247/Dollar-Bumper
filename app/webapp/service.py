@@ -208,22 +208,26 @@ def _task_url(c: Campaign) -> str:
 
 
 async def tasks_list(u: WebAppUser) -> dict:
-    camps = await active_campaigns_for(u.id)
-    return {
-        "ok": True,
-        "tasks": [
-            {
-                "id": c.id,
-                "title": c.title,
-                "channel": c.channel,
-                "reward": _q(c.reward_per_task),
-                "description": c.description,
-                "kind": c.kind,
-                "url": _task_url(c),
-            }
-            for c in camps
-        ],
-    }
+    from app.services.campaigns import active_campaigns_and_done
+    from app.services.tasks import display_title
+
+    camps, done_ids = await active_campaigns_and_done(u.id)
+    tasks = [
+        {
+            "id": c.id,
+            "title": display_title(c.channel, c.link, c.title),
+            "channel": c.channel,
+            "reward": _q(c.reward_per_task),
+            "description": c.description,
+            "kind": c.kind,
+            "url": _task_url(c),
+            "done": c.id in done_ids,
+        }
+        for c in camps
+    ]
+    # Not-done first (so there's always something to do at the top), done last.
+    tasks.sort(key=lambda t: t["done"])
+    return {"ok": True, "tasks": tasks}
 
 
 async def task_verify(u: WebAppUser, campaign_id: int, bot: Bot) -> dict:

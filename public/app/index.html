@@ -474,7 +474,8 @@ function renderTasks(tasks){
     return;
   }
   box.innerHTML='';
-  tasks.forEach(t=>{
+  const active = tasks.filter(t=>!t.done), done = tasks.filter(t=>t.done);
+  active.forEach(t=>{
     const visit = t.kind==='visit';
     const claimLabel = visit ? '💰 Claim Reward' : '✅ Verify &amp; Claim';
     const c=document.createElement('div'); c.className='card fade';
@@ -485,6 +486,16 @@ function renderTasks(tasks){
       ${visit?`<div class="thint" id="h${t.id}">Open the task, then claim.</div>`:''}`;
     box.appendChild(c);
   });
+  if(done.length){
+    const h=document.createElement('div'); h.className='sec'; h.textContent='✅ Completed';
+    box.appendChild(h);
+    done.forEach(t=>{
+      const c=document.createElement('div'); c.className='card'; c.style.opacity='.55';
+      c.innerHTML=`<h3>✅ ${escapeHtml(t.title)} <span class="reward" style="background:linear-gradient(90deg,#28e07a,#12b85f)">+${usdt(t.reward)}</span></h3>
+        <div class="thint">Completed — reward credited.</div>`;
+      box.appendChild(c);
+    });
+  }
 }
 
 // Fetch tasks and update the cache; optionally repaint. Returns true on success.

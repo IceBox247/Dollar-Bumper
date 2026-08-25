@@ -112,6 +112,27 @@ async def active_campaigns_for(user_id: int) -> list[Campaign]:
         return [c for c in rows.all() if c.id not in done_ids]
 
 
+async def active_campaigns_and_done(user_id: int) -> tuple[list[Campaign], set[int]]:
+    """All active campaigns with budget left, plus the set this user already did.
+    Lets the UI show completed tasks marked done instead of silently hiding them."""
+    from app.db.models import TaskCompletion
+
+    async with Session() as s:
+        done = await s.scalars(
+            select(TaskCompletion.campaign_id).where(TaskCompletion.user_id == user_id)
+        )
+        done_ids = set(done.all())
+        rows = await s.scalars(
+            select(Campaign)
+            .where(
+                Campaign.status == CampaignStatus.ACTIVE.value,
+                Campaign.budget_remaining >= Campaign.reward_per_task,
+            )
+            .order_by(Campaign.reward_per_task.desc(), Campaign.id.desc())
+        )
+        return list(rows.all()), done_ids
+
+
 async def campaigns_by_advertiser(advertiser_id: int) -> list[Campaign]:
     async with Session() as s:
         rows = await s.scalars(

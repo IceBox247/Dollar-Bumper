@@ -326,7 +326,7 @@ async def cleartasks(message: Message, command: CommandObject) -> None:
 async def list_tasks_admin(message: Message) -> None:
     if not _is_admin(message.from_user.id):
         return
-    from app.services.tasks import all_tasks
+    from app.services.tasks import all_tasks, display_title
 
     ts = await all_tasks()
     if not ts:
@@ -335,7 +335,8 @@ async def list_tasks_admin(message: Message) -> None:
     lines = ["📋 <b>Tasks</b> (newest first):"]
     for c in ts[:60]:
         tag = "✅verify" if c.kind == "channel" else "🔗visit"
-        lines.append(f"#{c.id} {tag} · {c.title} · {usdt(c.reward_per_task)} · {c.status}")
+        name = display_title(c.channel, c.link, c.title)
+        lines.append(f"#{c.id} {tag} · {name} · {usdt(c.reward_per_task)} · {c.status}")
     await message.answer("\n".join(lines))
 
 

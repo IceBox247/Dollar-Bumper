@@ -50,6 +50,29 @@ def classify(url: str) -> tuple[str, str | None, str | None, str]:
     return "visit", None, url, "Open link"
 
 
+def clean_task_url(channel: str | None, link: str | None) -> str:
+    """Best URL for a task: the (sanitized) link, else the channel's t.me link."""
+    if link:
+        return link.strip().strip("<>").strip().rstrip("<>.,")
+    return f"https://t.me/{channel.lstrip('@')}" if channel else ""
+
+
+# Titles that mean "we couldn't name it" — safe to re-derive from the URL.
+_GENERIC_TITLES = {"", "Open link"}
+
+
+def display_title(channel: str | None, link: str | None, stored_title: str | None) -> str:
+    """A friendly task label. Keeps a real stored/advertiser title, but re-derives
+    a name+verb ("Join @X", "Follow on WhatsApp") when the stored one is generic —
+    fixes tasks saved before links classified correctly, without a re-add."""
+    if stored_title and stored_title not in _GENERIC_TITLES:
+        return stored_title
+    url = clean_task_url(channel, link)
+    if url:
+        return classify(url)[3]
+    return stored_title or "Open link"
+
+
 async def create_task(
     kind: str, title: str, channel: str | None, link: str | None,
     reward: Decimal, admin_id: int,
