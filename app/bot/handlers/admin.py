@@ -195,6 +195,34 @@ async def credit(message: Message, command: CommandObject) -> None:
         pass
 
 
+@router.message(Command("wd"))
+async def wd_status(message: Message, command: CommandObject) -> None:
+    """Inspect withdrawals. /wd  (last 10)  or  /wd <withdrawal_id>"""
+    if not _is_admin(message.from_user.id):
+        return
+    arg = (command.args or "").strip()
+    async with Session() as s:
+        if arg.isdigit():
+            w = await s.get(Withdrawal, int(arg))
+            rows = [w] if w else []
+        else:
+            rows = list((await s.scalars(
+                select(Withdrawal).order_by(Withdrawal.id.desc()).limit(10)
+            )).all())
+    if not rows:
+        await message.answer("No withdrawals found.")
+        return
+    lines = ["💸 <b>Withdrawals</b> (newest first):"]
+    for w in rows:
+        tx = f"\n   🔗 <code>{w.tx_hash}</code>" if w.tx_hash else ""
+        err = f"\n   ⚠️ {w.error[:140]}" if w.error else ""
+        lines.append(
+            f"#{w.id} · user <code>{w.user_id}</code> · {usdt(w.amount)} · "
+            f"<b>{w.status}</b>{tx}{err}"
+        )
+    await message.answer("\n".join(lines), disable_web_page_preview=True)
+
+
 @router.message(Command("whois"))
 async def whois(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):

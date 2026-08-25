@@ -248,6 +248,16 @@ async def _post_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> N
         )
     except Exception as e:  # noqa: BLE001
         log.warning("could not post proof to channel: %s", e)
+        # Tell admins why the proof didn't drop (usually: bot isn't an admin
+        # of the proof channel, or PROOF_CHANNEL_ID is wrong).
+        for admin_id in settings.admin_ids:
+            await _safe_dm(
+                bot, admin_id,
+                f"⚠️ Paid {usdt(amount)} but couldn't post proof to "
+                f"<code>{settings.proof_channel_id}</code>:\n{type(e).__name__}: "
+                f"{str(e)[:140]}\n\nMake the bot an ADMIN of that channel "
+                "(with post permission).",
+            )
 
 
 async def _notify_admins_review(bot: Bot, wd_id: int, uid: int, amount: Decimal, wallet: str) -> None:
