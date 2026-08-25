@@ -98,6 +98,14 @@ class Settings(BaseSettings):
             return _STR_DEFAULTS[info.field_name]
         return v.strip() if isinstance(v, str) else v
 
+    @field_validator("proof_channel_id", mode="before")
+    @classmethod
+    def _proof_default(cls, v):
+        # A blank/whitespace env value must not wipe out the default channel.
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return "-1003945413444"
+        return v.strip() if isinstance(v, str) else v
+
     @field_validator("advertiser_reward_pool_pct", mode="before")
     @classmethod
     def _pool_pct(cls, v):
