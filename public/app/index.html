@@ -208,6 +208,9 @@
       <div class="tile green" id="deviceTile" onclick="deviceInfo()">
         <div class="tile-ic" id="deviceIc">🛡️</div><div class="t">Device</div><div class="d" id="deviceTxt">Checking…</div>
       </div>
+      <div class="tile gold" onclick="go('advertise')">
+        <div class="tile-ic">📢</div><div class="t">Advertise</div><div class="d">Promote your project</div>
+      </div>
     </div>
 
     <div class="sec">Your Wallet</div>
@@ -261,6 +264,12 @@
       <button id="segWd" onclick="lbTab('wd')">💸 Top Withdrawn</button>
     </div>
     <div id="lbList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+  </div>
+
+  <!-- ADVERTISE -->
+  <div id="tab-advertise" class="hidden">
+    <div class="sec">📢 Advertise Your Project</div>
+    <div id="advView"><div class="skeleton"></div></div>
   </div>
 </div>
 
@@ -602,14 +611,99 @@ async function doWithdraw(){
   b.disabled=false; b.innerHTML='💸 Withdraw';
 }
 function go(tab){
-  ['home','tasks','ranks','invite','withdraw'].forEach(t=>{
+  ['home','tasks','ranks','invite','withdraw','advertise'].forEach(t=>{
     const el=document.getElementById('tab-'+t); el.classList.toggle('hidden', t!==tab);
     if(t===tab){ el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade'); }
   });
   document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
   if(tab==='tasks') loadTasks();
   if(tab==='ranks'){ lbData=null; loadLeaderboard(); }
+  if(tab==='advertise') advHome();
   window.scrollTo(0,0);
+}
+
+/* ---- Advertiser flow ---- */
+let advCfg=null, advPending=null;
+function advPct(n){ return Math.round(parseFloat(n||'0')*100); }
+async function advHome(){
+  const box=document.getElementById('advView');
+  advPending=null;
+  const d=await api('adv_list');
+  if(!d.ok){ box.innerHTML='<div class="empty">Couldn\'t load. <button class="btn ghost sm" style="max-width:160px;margin:12px auto 0" onclick="advHome()">🔄 Retry</button></div>'; return; }
+  advCfg=d;
+  const mine=(d.campaigns||[]);
+  const emoji={active:'🟢',pending_payment:'🟡',completed:'✅',paused:'⏸️',rejected:'🔴'};
+  box.innerHTML=
+    `<div class="card">
+      <h3>🚀 Get real users</h3>
+      <p>Promote your channel, group, bot or website. You set the reward per action and your budget.</p>
+      <p style="margin-top:8px">💸 <b>${advPct(d.fee_pct)}%</b> platform fee · <b>${advPct(d.reward_pool_pct)}%</b> goes to taskers as rewards.<br>
+      Minimum budget: <b>${fmt(d.min_budget)} USDT</b> · Network: BEP20 (BSC)</p>
+      <button class="btn gold" onclick="advForm()">📢 Create Campaign</button>
+    </div>`+
+    (mine.length?`<div class="sec">Your Campaigns</div>`+mine.map(c=>
+      `<div class="card"><h3>${emoji[c.status]||'•'} ${escapeHtml(c.title)} <span class="reward">${usdt(c.reward)}</span></h3>
+       <p>Status: <b>${escapeHtml(c.status)}</b><br>Reward pool left: <b>${fmt(c.budget_remaining)}</b> / paid ${fmt(c.budget_total)} USDT</p></div>`
+    ).join(''):'');
+}
+function advForm(){
+  const box=document.getElementById('advView');
+  box.innerHTML=
+    `<div class="card">
+      <h3>📢 New Campaign</h3>
+      <input class="input" id="advTitle" placeholder="Campaign title (e.g. your project name)" />
+      <input class="input" id="advUrl" placeholder="Link: @channel, t.me/…, WhatsApp, website" />
+      <input class="input" id="advReward" inputmode="decimal" placeholder="Reward per task (USDT), e.g. 0.02" oninput="advCalc()" />
+      <input class="input" id="advBudget" inputmode="decimal" placeholder="Total budget (USDT), min ${fmt(advCfg?advCfg.min_budget:'0')}" oninput="advCalc()" />
+      <div class="thint" id="advCalc">Enter a reward and budget to see the split.</div>
+      <button class="btn gold" id="advCreateBtn" onclick="advCreate()">Continue → Payment</button>
+      <button class="btn ghost sm" onclick="advHome()">← Back</button>
+    </div>`;
+}
+function advCalc(){
+  const r=parseFloat(document.getElementById('advReward').value||'0');
+  const b=parseFloat(document.getElementById('advBudget').value||'0');
+  const el=document.getElementById('advCalc'); if(!advCfg){ return; }
+  if(r>0&&b>0){
+    const pool=b*parseFloat(advCfg.reward_pool_pct);
+    const est=Math.floor(pool/r);
+    el.innerHTML=`Platform fee ${advPct(advCfg.fee_pct)}% · Reward pool <b>${fmt(pool)} USDT</b> → ~<b>${est}</b> tasks`;
+  } else { el.textContent='Enter a reward and budget to see the split.'; }
+}
+async function advCreate(){
+  const title=document.getElementById('advTitle').value.trim();
+  const url=document.getElementById('advUrl').value.trim();
+  const reward=document.getElementById('advReward').value.trim();
+  const budget=document.getElementById('advBudget').value.trim();
+  const btn=document.getElementById('advCreateBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Creating…';
+  const d=await api('adv_create',{title,url,reward,budget});
+  btn.disabled=false; btn.textContent='Continue → Payment';
+  if(!d.ok){ haptic('error'); toast(d.error||'Could not create'); return; }
+  haptic('success'); advPending=d; advPay(d);
+}
+function advPay(d){
+  const box=document.getElementById('advView');
+  box.innerHTML=
+    `<div class="card">
+      <h3>💳 Fund your campaign</h3>
+      <p>Send exactly <b>${fmt(d.amount)} USDT</b> (<b>${escapeHtml(d.network)}</b>) to:</p>
+      <div class="link-box" id="advAddr">${escapeHtml(d.pay_to)}</div>
+      <button class="btn ghost sm" onclick="advCopy('${d.pay_to}')">📋 Copy Address</button>
+      <p style="margin-top:10px">Reward pool: <b>${fmt(d.reward_pool)} USDT</b> (~${d.est_completions} tasks). ${d.verified?'✅ Joins are verified.':'🔗 Open-and-claim.'}</p>
+      <input class="input" id="advTx" placeholder="Paste the transaction hash (0x…)" />
+      <button class="btn green" id="advVerifyBtn" onclick="advVerify()">🔎 I've Paid — Verify</button>
+      <button class="btn ghost sm" onclick="advHome()">Cancel</button>
+    </div>`;
+}
+function advCopy(a){ navigator.clipboard.writeText(a).then(()=>toast('📋 Address copied')); }
+async function advVerify(){
+  if(!advPending){ toast('Start again.'); advHome(); return; }
+  const tx=document.getElementById('advTx').value.trim();
+  const btn=document.getElementById('advVerifyBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Verifying…';
+  const d=await api('adv_verify',{campaign_id:advPending.campaign_id,tx_hash:tx});
+  btn.disabled=false; btn.innerHTML='🔎 I\'ve Paid — Verify';
+  if(d.ok){ haptic('success'); toast('🎉 Campaign is live!'); advPending=null; advHome(); }
+  else { haptic('error'); toast(d.message||d.error||'Could not verify'); }
 }
 
 /* ---- Leaderboard ---- */

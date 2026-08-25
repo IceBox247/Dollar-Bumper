@@ -294,3 +294,99 @@ async def withdraw(u: WebAppUser, amount, bot: Bot) -> dict:
             return {"ok": False, "error": "Enter a valid amount."}
     res = await request_withdrawal(u.id, amt, bot)
     return {"ok": res.ok, "message": res.message, "needs_review": res.needs_review}
+
+
+# ── Advertiser flow (Mini App) ────────────────────────────────
+def _adv_config() -> dict:
+    pool = q(settings.advertiser_reward_pool_pct)
+    return {
+        "min_budget": _q(settings.min_campaign_budget),
+        "pay_to": settings.project_wallet_address,
+        "network": "BEP20 (BSC)",
+        "reward_pool_pct": _q(pool),
+        "fee_pct": _q(q(1) - pool),
+    }
+
+
+async def advertise_create(u: WebAppUser, title: str, url: str, reward, budget) -> dict:
+    from app.services.campaigns import create_campaign
+    from app.services.tasks import classify
+
+    if not settings.project_wallet_address:
+        return {"ok": False, "error": "Advertising isn't available right now."}
+    url = (url or "").strip()
+    if not url:
+        return {"ok": False, "error": "Enter the link you want to promote."}
+    try:
+        reward_d = q(Decimal(str(reward)))
+        budget_d = q(Decimal(str(budget)))
+    except (InvalidOperation, ValueError):
+        return {"ok": False, "error": "Enter valid numbers for reward and budget."}
+    if reward_d <= 0:
+        return {"ok": False, "error": "Reward per task must be greater than 0."}
+    if budget_d < q(settings.min_campaign_budget):
+        return {"ok": False, "error": f"Minimum budget is {_q(settings.min_campaign_budget)} USDT."}
+    if budget_d < reward_d:
+        return {"ok": False, "error": "Budget must be at least one reward."}
+
+    kind, channel, link, auto_title = classify(url)
+    title = (title or "").strip()[:128] or auto_title
+    camp = await create_campaign(
+        advertiser_id=u.id,
+        title=title,
+        channel=channel or "",
+        reward_per_task=reward_d,
+        budget_total=budget_d,
+        kind=kind,
+        link=link,
+    )
+    pool = q(settings.advertiser_reward_pool_pct)
+    reward_pool = q(budget_d * pool)
+    est = int(reward_pool / reward_d) if reward_d > 0 else 0
+    cfg = _adv_config()
+    return {
+        "ok": True,
+        "campaign_id": camp.id,
+        "amount": _q(budget_d),
+        "reward_pool": _q(reward_pool),
+        "est_completions": est,
+        "verified": kind == "channel",
+        **cfg,
+    }
+
+
+async def advertise_verify(u: WebAppUser, campaign_id, tx_hash: str) -> dict:
+    from app.services.campaigns import verify_and_activate
+    from app.utils.validators import is_valid_tx_hash
+
+    tx = (tx_hash or "").strip()
+    if not is_valid_tx_hash(tx):
+        return {"ok": False, "error": "That isn't a valid transaction hash (0x + 64 hex)."}
+    try:
+        cid = int(campaign_id)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "No campaign in progress."}
+    res = await verify_and_activate(cid, tx)
+    return {"ok": res.ok, "message": res.message}
+
+
+async def advertise_list(u: WebAppUser) -> dict:
+    from app.services.campaigns import campaigns_by_advertiser
+    from app.services.tasks import display_title
+
+    camps = await campaigns_by_advertiser(u.id)
+    return {
+        "ok": True,
+        **_adv_config(),
+        "campaigns": [
+            {
+                "id": c.id,
+                "title": display_title(c.channel, c.link, c.title),
+                "status": c.status,
+                "reward": _q(c.reward_per_task),
+                "budget_total": _q(c.budget_total),
+                "budget_remaining": _q(c.budget_remaining),
+            }
+            for c in camps
+        ],
+    }

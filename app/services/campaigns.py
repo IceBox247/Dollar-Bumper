@@ -82,11 +82,12 @@ async def verify_and_activate(campaign_id: int, tx_hash: str) -> VerifyResult:
         campaign.payment_tx_hash = tx_hash
         campaign.payment_amount = q(check.amount)
         campaign.activated_at = datetime.now(timezone.utc)
-        # Credit any overpayment to the campaign's spendable budget.
-        if q(check.amount) > campaign.budget_total:
-            extra = q(check.amount) - campaign.budget_total
-            campaign.budget_total = q(campaign.budget_total + extra)
-            campaign.budget_remaining = q(campaign.budget_remaining + extra)
+        # Fee split: only a share of what the advertiser paid funds tasker
+        # rewards (the reward pool); the rest is the platform fee. Based on the
+        # ACTUAL amount received, so overpayment grows the pool proportionally.
+        pool_pct = q(settings.advertiser_reward_pool_pct)
+        campaign.budget_total = q(check.amount)          # full amount paid (record)
+        campaign.budget_remaining = q(check.amount * pool_pct)  # spendable on rewards
         s.add(ProcessedTx(tx_hash=tx_hash))
         await s.commit()
         return VerifyResult(True, "Payment verified — campaign is live! 🎉", campaign_id, check.amount)

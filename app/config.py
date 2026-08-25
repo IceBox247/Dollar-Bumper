@@ -1,7 +1,7 @@
 """Application configuration, loaded from environment / .env."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
 from pydantic import Field, field_validator
@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     min_withdrawal: Decimal = Decimal("1.0")
     review_threshold: Decimal = Decimal("5.0")
     min_campaign_budget: Decimal = Decimal("10.0")
+    # Share of an advertiser's payment that funds tasker rewards. 0.40 = 40% to
+    # taskers, 60% platform fee. Accepts 0.40 or 40.
+    advertiser_reward_pool_pct: Decimal = Decimal("0.40")
     # Flag an account when this many OTHER accounts already share its IP.
     # 2 = allow up to 2 accounts per IP, flag the 3rd+ (tolerant of shared/NAT).
     ip_flag_threshold: int = 2
@@ -92,6 +95,21 @@ class Settings(BaseSettings):
         if v is None or (isinstance(v, str) and v.strip() == ""):
             return _STR_DEFAULTS[info.field_name]
         return v.strip() if isinstance(v, str) else v
+
+    @field_validator("advertiser_reward_pool_pct", mode="before")
+    @classmethod
+    def _pool_pct(cls, v):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return Decimal("0.40")
+        try:
+            d = Decimal(str(v).replace("%", "").strip())
+        except (InvalidOperation, ValueError):
+            return Decimal("0.40")
+        if d > 1:  # given as a percentage like "40"
+            d = d / Decimal("100")
+        if d < 0 or d > 1:
+            return Decimal("0.40")
+        return d
 
     @field_validator("ip_flag_threshold", mode="before")
     @classmethod

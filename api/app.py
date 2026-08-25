@@ -53,6 +53,15 @@ async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
         return await service.set_wallet(user, data.get("address", ""))
     if action == "withdraw":
         return await service.withdraw(user, data.get("amount"), bot)
+    if action == "adv_list":
+        return await service.advertise_list(user)
+    if action == "adv_create":
+        return await service.advertise_create(
+            user, data.get("title", ""), data.get("url", ""),
+            data.get("reward"), data.get("budget"),
+        )
+    if action == "adv_verify":
+        return await service.advertise_verify(user, data.get("campaign_id"), data.get("tx_hash", ""))
     return {"ok": False, "error": "unknown action", "_status": 400}
 
 
