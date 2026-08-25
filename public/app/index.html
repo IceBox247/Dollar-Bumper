@@ -467,6 +467,31 @@ function openLink(url){
 function tasksCacheGet(){ try{ return JSON.parse(localStorage.getItem('db_tasks')||'null'); }catch(e){ return null; } }
 function tasksCacheSet(t){ try{ localStorage.setItem('db_tasks', JSON.stringify(t)); }catch(e){} }
 
+/* Persisted "opened" state so a visit task stays claim-ready across re-renders
+   (e.g. after you claim a different task) and even after leaving the app. */
+const READY_MS = 8000;
+const _readyTimers = {};
+function openedMap(){ try{ return JSON.parse(localStorage.getItem('db_opened')||'{}'); }catch(e){ return {}; } }
+function openedSave(m){ try{ localStorage.setItem('db_opened', JSON.stringify(m)); }catch(e){} }
+function markOpened(id){ const m=openedMap(); if(!m[id]){ m[id]=Date.now(); openedSave(m); } }
+function clearOpened(id){ const m=openedMap(); if(m[id]){ delete m[id]; openedSave(m); } }
+function readyState(id){ const t=openedMap()[id];
+  if(!t) return {opened:false, ready:false, left:0};
+  const left=Math.max(0, READY_MS-(Date.now()-t));
+  return {opened:true, ready:left<=0, left:Math.ceil(left/1000)};
+}
+function scheduleReady(id){
+  if(_readyTimers[id]) return;
+  const tick=()=>{
+    const b=document.getElementById('v'+id), h=document.getElementById('h'+id);
+    const st=readyState(id);
+    if(st.ready){ if(b) b.disabled=false; if(h) h.textContent='✅ Ready — tap Claim!';
+      clearInterval(_readyTimers[id]); delete _readyTimers[id]; return; }
+    if(h) h.textContent='You can claim in '+st.left+'s…';
+  };
+  tick(); _readyTimers[id]=setInterval(tick,1000);
+}
+
 function renderTasks(tasks){
   const box=document.getElementById('tasksList');
   if(!tasks || !tasks.length){
@@ -475,17 +500,26 @@ function renderTasks(tasks){
   }
   box.innerHTML='';
   const active = tasks.filter(t=>!t.done), done = tasks.filter(t=>t.done);
+  const resume = [];
   active.forEach(t=>{
     const visit = t.kind==='visit';
     const claimLabel = visit ? '💰 Claim Reward' : '✅ Verify &amp; Claim';
+    const st = visit ? readyState(t.id) : {opened:true, ready:true, left:0};
+    const enabled = visit ? st.ready : true;
+    const hint = !visit ? '' :
+      (st.ready ? '✅ Ready — tap Claim!'
+       : st.opened ? ('You can claim in '+st.left+'s…')
+       : 'Open the task, then claim.');
     const c=document.createElement('div'); c.className='card fade';
     c.innerHTML=`<h3>📢 ${escapeHtml(t.title)} <span class="reward">${usdt(t.reward)}</span></h3>
       ${t.description?`<p>${escapeHtml(t.description)}</p>`:''}
       <button class="btn ghost sm" onclick="openTask('${t.url}',${t.id},${visit})">🔗 Open Task</button>
-      <button class="btn green sm" id="v${t.id}" ${visit?'disabled':''} onclick="claimTask(${t.id})">${claimLabel}</button>
-      ${visit?`<div class="thint" id="h${t.id}">Open the task, then claim.</div>`:''}`;
+      <button class="btn green sm" id="v${t.id}" ${enabled?'':'disabled'} onclick="claimTask(${t.id})">${claimLabel}</button>
+      ${visit?`<div class="thint" id="h${t.id}">${hint}</div>`:''}`;
     box.appendChild(c);
+    if(visit && st.opened && !st.ready) resume.push(t.id);   // resume countdown
   });
+  resume.forEach(scheduleReady);
   if(done.length){
     const h=document.createElement('div'); h.className='sec'; h.textContent='✅ Completed';
     box.appendChild(h);
@@ -517,18 +551,12 @@ async function loadTasks(){
 }
 function openTask(url,id,visit){
   openLink(url);
-  if(visit){
-    const b=document.getElementById('v'+id), h=document.getElementById('h'+id);
-    if(!b) return;
-    let s=8; b.disabled=true;
-    const iv=setInterval(()=>{ s--; if(h)h.textContent='You can claim in '+s+'s…';
-      if(s<=0){ clearInterval(iv); b.disabled=false; if(h)h.textContent='✅ Ready — tap Claim!'; } },1000);
-  }
+  if(visit){ markOpened(id); scheduleReady(id); }   // persisted; survives re-render
 }
 async function claimTask(id){
   const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Claiming…';
   const d = await api('verify',{campaign_id:id});
-  if(d.ok){ haptic('success'); toast('✅ '+usdt(d.reward)+' claimed!'); await loadHome(); await loadTasks(); }
+  if(d.ok){ haptic('success'); clearOpened(id); toast('✅ '+usdt(d.reward)+' claimed!'); await loadHome(); await loadTasks(); }
   else{ haptic('error'); toast(d.error||'Could not claim'); b.disabled=false; b.innerHTML='✅ Claim'; }
 }
 function toggleWallet(){
