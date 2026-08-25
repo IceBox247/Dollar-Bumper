@@ -30,6 +30,14 @@ async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
     bot = get_bot()
 
     if action == "home":
+        # Opportunistically finalize any broadcast payouts (cheap no-op when
+        # none are pending) so "Paid ✅" lands without waiting for the cron.
+        try:
+            from app.services.payouts import confirm_payouts
+
+            await confirm_payouts(bot, limit=5)
+        except Exception as e:  # noqa: BLE001
+            print("opportunistic confirm error:", repr(e))
         return await service.home_state(user, bot, ip)
     if action == "channels":
         return await service.channels_status(user, bot)
