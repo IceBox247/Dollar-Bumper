@@ -284,25 +284,36 @@ async def addtasks(message: Message, command: CommandObject) -> None:
     if nontg_reward is None:
         nontg_reward = reward
 
-    created = tg_n = other_n = 0
+    created = tg_n = other_n = verify_n = 0
+    needs_admin: list[str] = []
     for url in urls:
         kind, ch, ln, title = classify(url)
-        # A channel is only "verify" if the bot is actually admin there.
-        if kind == "channel" and ch and not await bot_can_verify(message.bot, ch):
-            kind, ln, ch = "visit", url, None
+        # Keep Telegram channels VERIFIABLE (kind stays "channel") so joins are
+        # checked before crediting. Just flag channels the bot can't yet verify.
+        if kind == "channel" and ch:
+            verify_n += 1
+            if not await bot_can_verify(message.bot, ch):
+                needs_admin.append(ch)
         is_tg = _is_telegram_link(url)
         r = reward if is_tg else nontg_reward
         await create_task(kind, title, ch, ln, r, message.from_user.id)
         created += 1
         tg_n += int(is_tg)
         other_n += int(not is_tg)
-    await message.answer(
+    msg = (
         f"✅ Added <b>{created}</b> task(s).\n"
         f"• {tg_n} Telegram @ {usdt(reward)}\n"
-        f"• {other_n} other @ {usdt(nontg_reward)}\n\n"
-        "Telegram channels where the bot is admin are auto-verified; everything "
-        "else is open-and-claim. Use /tasks to review."
+        f"• {other_n} other @ {usdt(nontg_reward)}\n"
+        f"• 🔒 {verify_n} require a verified join before payout\n"
     )
+    if needs_admin:
+        chans = ", ".join(dict.fromkeys(needs_admin))
+        msg += (
+            "\n⚠️ <b>Add this bot as an ADMIN</b> in these channels or joins "
+            f"can't be verified and users can't claim:\n{chans}"
+        )
+    msg += "\n\nUse /tasks to review."
+    await message.answer(msg)
 
 
 @router.message(Command("cleartasks"))

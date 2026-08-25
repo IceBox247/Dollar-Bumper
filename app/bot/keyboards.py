@@ -75,18 +75,19 @@ def wallet_actions() -> InlineKeyboardMarkup:
 
 
 def task_card(campaign: Campaign) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(
-                text=f"📢 Open {campaign.channel}",
-                url=f"https://t.me/{campaign.channel.lstrip('@')}",
-            )],
-            [InlineKeyboardButton(
-                text=f"✅ Verify & Claim {usdt(campaign.reward_per_task)}",
-                callback_data=f"task:verify:{campaign.id}",
-            )],
-        ]
+    from app.services.tasks import clean_task_url
+
+    url = clean_task_url(campaign.channel, campaign.link)
+    is_channel = campaign.kind == "channel"
+    claim = (
+        f"✅ Verify & Claim {usdt(campaign.reward_per_task)}"
+        if is_channel else f"💰 Claim {usdt(campaign.reward_per_task)}"
     )
+    rows = []
+    if url:  # only add an Open button when we actually have a link
+        rows.append([InlineKeyboardButton(text="📢 Open Task", url=url)])
+    rows.append([InlineKeyboardButton(text=claim, callback_data=f"task:verify:{campaign.id}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def withdraw_options(balance_ok: bool) -> InlineKeyboardMarkup:

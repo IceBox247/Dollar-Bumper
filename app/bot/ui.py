@@ -81,10 +81,14 @@ def task_intro(count: int) -> str:
 
 
 def task_card_text(c: Campaign) -> str:
+    from app.services.tasks import display_title
+
+    title = display_title(c.channel, c.link, c.title)
     desc = f"\n💬 {c.description}" if c.description else ""
+    action = "Join & verify" if c.kind == "channel" else "Open & claim"
     return (
-        f"📢 <b>{c.title}</b>{desc}\n\n"
-        f"🎯 Task : join <b>{c.channel}</b>\n"
+        f"📢 <b>{title}</b>{desc}\n\n"
+        f"🎯 {action}\n"
         f"💰 Reward : <b>{usdt(c.reward_per_task)}</b>"
     )
 

@@ -12,7 +12,7 @@ from app.db.base import Session
 from app.db.models import Campaign, User, Withdrawal
 from app.services.campaigns import active_campaigns_for
 from app.services.earning import complete_task, get_or_create_user
-from app.services.membership import is_member
+from app.services.membership import is_member, member_status
 from app.services.payouts import request_withdrawal
 from app.utils.format import q, usdt
 from app.utils.validators import is_valid_evm_address, to_checksum
@@ -235,10 +235,17 @@ async def task_verify(u: WebAppUser, campaign_id: int, bot: Bot) -> dict:
         c = await s.get(Campaign, campaign_id)
     if c is None:
         return {"ok": False, "error": "Task not found."}
-    # Channel tasks: verify real membership. Visit tasks: honor-based claim.
+    # Channel tasks: verify REAL membership before crediting (fail closed).
+    # Visit tasks (bot links, private invites, external): honor-based claim.
     if c.kind == "channel" and c.channel:
-        if not await is_member(bot, c.channel, u.id):
-            return {"ok": False, "error": f"Join {c.channel} first, then claim."}
+        joined, reason = await member_status(bot, c.channel, u.id)
+        if not joined:
+            if ":" in (reason or ""):  # an API error → the bot can't see the channel
+                return {"ok": False, "error": (
+                    f"⚠️ Can't verify {c.channel} yet — the bot must be an admin "
+                    "there. Please try again shortly."
+                )}
+            return {"ok": False, "error": f"Join {c.channel} first, then tap Claim. ✅"}
 
     res = await complete_task(u.id, campaign_id)
     if not res.ok:

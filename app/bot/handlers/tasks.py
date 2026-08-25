@@ -10,7 +10,7 @@ from app.db.base import Session
 from app.db.models import Campaign, User
 from app.services.campaigns import active_campaigns_for
 from app.services.earning import complete_task, get_or_create_user
-from app.services.membership import is_member
+from app.services.membership import member_status
 from app.utils.format import usdt
 
 router = Router(name="tasks")
@@ -40,11 +40,20 @@ async def verify_task(cb: CallbackQuery, bot: Bot) -> None:
         await cb.answer("Task not found.", show_alert=True)
         return
 
-    joined = await is_member(bot, campaign.channel, cb.from_user.id)
-    if not joined:
-        await cb.answer("You haven't joined yet — join, then verify.", show_alert=True)
-        await cb.message.answer(ui.task_not_joined(campaign.channel))
-        return
+    # Channel tasks require a REAL membership check before crediting (fail closed).
+    # Visit tasks (bot links, private invites, external) are open-and-claim.
+    if campaign.kind == "channel" and campaign.channel:
+        joined, reason = await member_status(bot, campaign.channel, cb.from_user.id)
+        if not joined:
+            if ":" in (reason or ""):  # API error → bot isn't admin / can't see it
+                await cb.answer(
+                    f"Can't verify {campaign.channel} yet — the bot must be admin there.",
+                    show_alert=True,
+                )
+                return
+            await cb.answer("You haven't joined yet — join, then verify.", show_alert=True)
+            await cb.message.answer(ui.task_not_joined(campaign.channel))
+            return
 
     result = await complete_task(cb.from_user.id, campaign_id)
     if not result.ok:
