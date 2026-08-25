@@ -316,6 +316,31 @@ async def addtasks(message: Message, command: CommandObject) -> None:
     await message.answer(msg)
 
 
+@router.message(Command("reverifytasks"))
+async def reverifytasks(message: Message, command: CommandObject) -> None:
+    """Upgrade existing public-channel tasks to verified joins (bot must be admin).
+    Keeps all tasks and completions — no re-add needed."""
+    if not _is_admin(message.from_user.id):
+        return
+    from app.services.tasks import reverify_channel_tasks
+
+    await message.answer("🔎 Checking channels and upgrading tasks…")
+    upgraded, cant = await reverify_channel_tasks(message.bot)
+    msg = (
+        f"🔒 Upgraded <b>{upgraded}</b> task(s) to <b>verified</b> joins — users "
+        "must now actually join before they're paid."
+    )
+    if cant:
+        chans = ", ".join(dict.fromkeys(cant))
+        msg += (
+            "\n\n⚠️ Bot is still <b>not admin</b> in these, so they stay "
+            f"open-and-claim until you add it:\n{chans}"
+        )
+    if not upgraded and not cant:
+        msg = "No public Telegram-channel tasks to upgrade (bots, private invites and websites can't be verified)."
+    await message.answer(msg)
+
+
 @router.message(Command("cleartasks"))
 async def cleartasks(message: Message, command: CommandObject) -> None:
     """Delete ALL tasks. Requires confirmation: /cleartasks yes"""

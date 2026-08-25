@@ -111,6 +111,35 @@ async def all_tasks() -> list[Campaign]:
         return list(rows.all())
 
 
+async def reverify_channel_tasks(bot) -> tuple[int, list[str]]:
+    """Upgrade existing tasks whose link is a public Telegram channel back to
+    verified 'channel' kind (in place, keeping completions). Returns
+    (upgraded_count, channels_where_bot_is_not_admin)."""
+    from app.services.membership import bot_can_verify
+
+    upgraded = 0
+    cant: list[str] = []
+    async with Session() as s:
+        rows = list((await s.scalars(select(Campaign))).all())
+        for c in rows:
+            url = clean_task_url(c.channel, c.link)
+            if not url:
+                continue
+            kind, ch, _ln, _title = classify(url)
+            if kind != "channel" or not ch:
+                continue  # bots, private invites, websites — not verifiable
+            if await bot_can_verify(bot, ch):
+                if c.kind != "channel" or c.channel != ch or c.link:
+                    c.kind = "channel"
+                    c.channel = ch
+                    c.link = None
+                    upgraded += 1
+            else:
+                cant.append(ch)
+        await s.commit()
+    return upgraded, cant
+
+
 async def clear_all_tasks() -> int:
     """Delete every task/campaign (and its completion rows). Returns count removed.
 
