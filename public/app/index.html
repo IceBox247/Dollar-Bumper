@@ -637,8 +637,7 @@ async function advHome(){
     `<div class="card">
       <h3>🚀 Get real users</h3>
       <p>Promote your channel, group, bot or website. You set the reward per action and your budget.</p>
-      <p style="margin-top:8px">💸 <b>${advPct(d.fee_pct)}%</b> platform fee · <b>${advPct(d.reward_pool_pct)}%</b> goes to taskers as rewards.<br>
-      Minimum budget: <b>${fmt(d.min_budget)} USDT</b> · Network: BEP20 (BSC)</p>
+      <p style="margin-top:8px">Minimum budget: <b>${fmt(d.min_budget)} USDT</b> · Network: BEP20 (BSC)</p>
       <button class="btn gold" onclick="advForm()">📢 Create Campaign</button>
     </div>`+
     (mine.length?`<div class="sec">Your Campaigns</div>`+mine.map(c=>
@@ -665,10 +664,9 @@ function advCalc(){
   const b=parseFloat(document.getElementById('advBudget').value||'0');
   const el=document.getElementById('advCalc'); if(!advCfg){ return; }
   if(r>0&&b>0){
-    const pool=b*parseFloat(advCfg.reward_pool_pct);
-    const est=Math.floor(pool/r);
-    el.innerHTML=`Platform fee ${advPct(advCfg.fee_pct)}% · Reward pool <b>${fmt(pool)} USDT</b> → ~<b>${est}</b> tasks`;
-  } else { el.textContent='Enter a reward and budget to see the split.'; }
+    const est=Math.floor((b*parseFloat(advCfg.reward_pool_pct))/r);
+    el.innerHTML=`Estimated delivery: ~<b>${est}</b> completions`;
+  } else { el.textContent='Enter a reward and budget to estimate delivery.'; }
 }
 async function advCreate(){
   const title=document.getElementById('advTitle').value.trim();
@@ -689,7 +687,7 @@ function advPay(d){
       <p>Send exactly <b>${fmt(d.amount)} USDT</b> (<b>${escapeHtml(d.network)}</b>) to:</p>
       <div class="link-box" id="advAddr">${escapeHtml(d.pay_to)}</div>
       <button class="btn ghost sm" onclick="advCopy('${d.pay_to}')">📋 Copy Address</button>
-      <p style="margin-top:10px">Reward pool: <b>${fmt(d.reward_pool)} USDT</b> (~${d.est_completions} tasks). ${d.verified?'✅ Joins are verified.':'🔗 Open-and-claim.'}</p>
+      <p style="margin-top:10px">Estimated delivery: ~<b>${d.est_completions}</b> completions. ${d.verified?'✅ Joins are verified.':'🔗 Open-and-claim.'}</p>
       <input class="input" id="advTx" placeholder="Paste the transaction hash (0x…)" />
       <button class="btn green" id="advVerifyBtn" onclick="advVerify()">🔎 I've Paid — Verify</button>
       <button class="btn ghost sm" onclick="advHome()">Cancel</button>
