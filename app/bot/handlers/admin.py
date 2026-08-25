@@ -195,6 +195,21 @@ async def credit(message: Message, command: CommandObject) -> None:
         pass
 
 
+@router.message(Command("postproof"))
+async def postproof(message: Message, command: CommandObject) -> None:
+    """(Re-)post the payout proof for a withdrawal. /postproof <withdrawal_id>"""
+    if not _is_admin(message.from_user.id):
+        return
+    from app.services.payouts import post_proof_for
+
+    arg = (command.args or "").strip()
+    if not arg.isdigit():
+        await message.answer("Usage: <code>/postproof 12</code> (a withdrawal id from /wd)")
+        return
+    result = await post_proof_for(message.bot, int(arg))
+    await message.answer(result)
+
+
 @router.message(Command("wd"))
 async def wd_status(message: Message, command: CommandObject) -> None:
     """Inspect withdrawals. /wd  (last 10)  or  /wd <withdrawal_id>"""

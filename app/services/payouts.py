@@ -232,9 +232,7 @@ async def _safe_dm(bot: Bot, uid: int, text: str) -> None:
         pass
 
 
-async def _post_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> None:
-    if not settings.proof_channel_id:
-        return
+def _proof_message(amount: Decimal, wallet: str, tx_hash: str):
     text = (
         "🎉 <b>New Withdrawal Paid</b> 🎉\n\n"
         f"💰 Amount : <b>{usdt(amount)}</b> 💎\n"
@@ -248,6 +246,13 @@ async def _post_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> N
             )
         ]]
     )
+    return text, kb
+
+
+async def _post_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> None:
+    if not settings.proof_channel_id:
+        return
+    text, kb = _proof_message(amount, wallet, tx_hash)
     try:
         await bot.send_message(
             settings.proof_channel_id, text, reply_markup=kb,
@@ -256,15 +261,41 @@ async def _post_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> N
     except Exception as e:  # noqa: BLE001
         log.warning("could not post proof to channel: %s", e)
         # Tell admins why the proof didn't drop (usually: bot isn't an admin
-        # of the proof channel, or PROOF_CHANNEL_ID is wrong).
+        # of the proof channel with post permission, or PROOF_CHANNEL_ID is wrong).
         for admin_id in settings.admin_ids:
             await _safe_dm(
                 bot, admin_id,
                 f"⚠️ Paid {usdt(amount)} but couldn't post proof to "
                 f"<code>{settings.proof_channel_id}</code>:\n{type(e).__name__}: "
                 f"{str(e)[:140]}\n\nMake the bot an ADMIN of that channel "
-                "(with post permission).",
+                "(with 'Post Messages' permission).",
             )
+
+
+async def post_proof_for(bot: Bot, withdrawal_id: int) -> str:
+    """Manually (re-)post the proof for a paid withdrawal. Surfaces the exact
+    error inline so an admin can see why it didn't drop."""
+    if not settings.proof_channel_id:
+        return "PROOF_CHANNEL_ID isn't set — no proof channel configured."
+    async with Session() as s:
+        wd = await s.get(Withdrawal, withdrawal_id)
+    if wd is None:
+        return "Withdrawal not found."
+    if not wd.tx_hash:
+        return f"#{wd.id} has no tx hash yet (status {wd.status})."
+    text, kb = _proof_message(q(wd.amount), wd.wallet_address, wd.tx_hash)
+    try:
+        await bot.send_message(
+            settings.proof_channel_id, text, reply_markup=kb,
+            disable_web_page_preview=True,
+        )
+        return f"✅ Proof posted for #{wd.id} to {settings.proof_channel_id}."
+    except Exception as e:  # noqa: BLE001
+        return (
+            f"❌ Couldn't post to {settings.proof_channel_id}:\n{type(e).__name__}: "
+            f"{str(e)[:160]}\n\nThe bot must be an ADMIN of that channel with "
+            "'Post Messages' permission."
+        )
 
 
 async def _notify_admins_review(bot: Bot, wd_id: int, uid: int, amount: Decimal, wallet: str) -> None:
