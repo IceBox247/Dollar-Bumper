@@ -232,32 +232,61 @@ async def _safe_dm(bot: Bot, uid: int, text: str) -> None:
         pass
 
 
-def _proof_message(amount: Decimal, wallet: str, tx_hash: str):
+def _payout_banner_url() -> str:
+    base = (settings.public_base_url or "").rstrip("/")
+    return f"{base}/app/payout.png" if base else ""
+
+
+_bot_username: str | None = None
+
+
+async def _bot_app_link(bot: Bot) -> str:
+    """A t.me link that opens the Mini App, for the 'Open Dollar Bumper' button.
+    Channel posts can't carry web_app buttons, so we use a startapp deep link."""
+    global _bot_username
+    if not _bot_username:
+        _bot_username = (settings.bot_username or "").strip().lstrip("@") or None
+        if not _bot_username:
+            try:
+                _bot_username = (await bot.me()).username
+            except Exception:  # noqa: BLE001
+                _bot_username = None
+    return f"https://t.me/{_bot_username}?startapp" if _bot_username else ""
+
+
+def _proof_message(amount: Decimal, wallet: str, tx_hash: str, app_link: str = ""):
     text = (
         "🎉 <b>New Withdrawal Paid</b> 🎉\n\n"
         f"💰 Amount : <b>{usdt(amount)}</b> 💎\n"
         f"👛 Wallet : <code>{mask_wallet(wallet)}</code>\n"
-        f"⛓️ Network : BEP20 (BSC)"
+        f"⛓️ Network : BEP20 (BSC)\n\n"
+        "#DollarBumper #USDTPayout"
     )
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[[
-            InlineKeyboardButton(
-                text="🧾 Transaction Hash", url=f"{settings.explorer_tx_url}{tx_hash}"
-            )
-        ]]
-    )
-    return text, kb
+    rows = [[InlineKeyboardButton(
+        text="🧾 View Transaction", url=f"{settings.explorer_tx_url}{tx_hash}"
+    )]]
+    if app_link:
+        rows.append([InlineKeyboardButton(text="🚀 Open Dollar Bumper", url=app_link)])
+    return text, InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _send_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> None:
+    """Post the payout proof (banner photo + caption + buttons). Raises on error."""
+    text, kb = _proof_message(amount, wallet, tx_hash, await _bot_app_link(bot))
+    banner = _payout_banner_url()
+    if banner:
+        await bot.send_photo(settings.proof_channel_id, photo=banner, caption=text, reply_markup=kb)
+    else:
+        await bot.send_message(
+            settings.proof_channel_id, text, reply_markup=kb, disable_web_page_preview=True
+        )
 
 
 async def _post_proof(bot: Bot, amount: Decimal, wallet: str, tx_hash: str) -> None:
     if not settings.proof_channel_id:
         return
-    text, kb = _proof_message(amount, wallet, tx_hash)
     try:
-        await bot.send_message(
-            settings.proof_channel_id, text, reply_markup=kb,
-            disable_web_page_preview=True,
-        )
+        await _send_proof(bot, amount, wallet, tx_hash)
     except Exception as e:  # noqa: BLE001
         log.warning("could not post proof to channel: %s", e)
         # Tell admins why the proof didn't drop (usually: bot isn't an admin
@@ -283,12 +312,8 @@ async def post_proof_for(bot: Bot, withdrawal_id: int) -> str:
         return "Withdrawal not found."
     if not wd.tx_hash:
         return f"#{wd.id} has no tx hash yet (status {wd.status})."
-    text, kb = _proof_message(q(wd.amount), wd.wallet_address, wd.tx_hash)
     try:
-        await bot.send_message(
-            settings.proof_channel_id, text, reply_markup=kb,
-            disable_web_page_preview=True,
-        )
+        await _send_proof(bot, q(wd.amount), wd.wallet_address, wd.tx_hash)
         return f"✅ Proof posted for #{wd.id} to {settings.proof_channel_id}."
     except Exception as e:  # noqa: BLE001
         return (
