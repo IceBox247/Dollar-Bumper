@@ -459,6 +459,7 @@ function deviceInfo(){
            : '⚠️ Another account was detected on this device/IP. Withdrawals will be reviewed.');
 }
 function openLink(url){
+  url=(url||'').replace(/[<>]/g,'').trim();   // strip stray brackets before opening
   if(!url) return;
   if(url.indexOf('t.me/')>-1){ tg? tg.openTelegramLink(url) : window.open(url,'_blank'); }
   else { (tg&&tg.openLink)? tg.openLink(url) : window.open(url,'_blank'); }

@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.constants import CampaignStatus
 from app.db.base import Session
@@ -26,7 +26,9 @@ def classify(url: str) -> tuple[str, str | None, str | None, str]:
     Accepts a full URL, a bare ``@username``, or a bare ``username`` and treats
     those as a public Telegram channel.
     """
-    url = url.strip()
+    # Strip surrounding <> (Telegram/markdown auto-links) and trailing junk so a
+    # pasted "<https://t.me/x>" doesn't classify as a broken "Open link".
+    url = url.strip().strip("<>").strip().rstrip("<>")
     # Bare @username or username -> treat as a Telegram channel link.
     if re.fullmatch(r"@?[A-Za-z0-9_]{4,32}", url):
         return "channel", f"@{url.lstrip('@')}", None, f"Join @{url.lstrip('@')}"
@@ -84,3 +86,20 @@ async def all_tasks() -> list[Campaign]:
     async with Session() as s:
         rows = await s.scalars(select(Campaign).order_by(Campaign.id.desc()))
         return list(rows.all())
+
+
+async def clear_all_tasks() -> int:
+    """Delete every task/campaign (and its completion rows). Returns count removed.
+
+    Completions are deleted first to satisfy the campaign foreign key.
+    """
+    from sqlalchemy import delete
+
+    from app.db.models import TaskCompletion
+
+    async with Session() as s:
+        n = await s.scalar(select(func.count(Campaign.id)))
+        await s.execute(delete(TaskCompletion))
+        await s.execute(delete(Campaign))
+        await s.commit()
+        return int(n or 0)

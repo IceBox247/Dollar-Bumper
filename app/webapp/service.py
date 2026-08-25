@@ -194,9 +194,16 @@ async def complete_onboarding(u: WebAppUser, bot: Bot) -> dict:
     return {"ok": True}
 
 
+def _clean_url(u: str | None) -> str:
+    """Strip stray <> and trailing junk so links pasted as <https://…> still open.
+    Fixes tasks already stored with a trailing '>' without needing a re-add."""
+    u = (u or "").strip().strip("<>").strip().rstrip("<>.,")
+    return u
+
+
 def _task_url(c: Campaign) -> str:
     if c.link:
-        return c.link
+        return _clean_url(c.link)
     return f"https://t.me/{c.channel.lstrip('@')}" if c.channel else ""
 
 

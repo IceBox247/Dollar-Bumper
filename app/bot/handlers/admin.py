@@ -218,10 +218,35 @@ async def whois(message: Message, command: CommandObject) -> None:
     )
 
 
+def _parse_reward_line(line: str, prefixes: tuple[str, ...]) -> Decimal | None:
+    """Parse 'reward=0.001' / 'reward 0.001' / 'reward: 0.001' (case-insensitive)."""
+    low = line.lower().strip()
+    for p in prefixes:
+        if low.startswith(p):
+            rest = line[len(p):].lstrip(" =:").replace(",", ".").replace("USDT", "").strip()
+            try:
+                return Decimal(rest)
+            except (InvalidOperation, ValueError):
+                return None
+    return None
+
+
+def _is_telegram_link(url: str) -> bool:
+    u = url.strip().lower()
+    if re.fullmatch(r"@?[a-z0-9_]{4,32}", u):
+        return True
+    return bool(re.search(r"(?:https?://)?(?:t|telegram)\.me/", u))
+
+
 @router.message(Command("addtasks"))
 async def addtasks(message: Message, command: CommandObject) -> None:
-    """Bulk-add earn tasks. Paste URLs (one per line) after the command.
-    Optional first line: reward=0.001  (default 0.001)."""
+    """Bulk-add earn tasks. Paste one link per line after the command.
+
+    Optional lines:
+      reward=0.001         base reward (Telegram links)
+      nontg_reward=0.0015  reward for non-Telegram links (WhatsApp, sites, …)
+    Angle brackets around links (<https://…>) are tolerated.
+    """
     if not _is_admin(message.from_user.id):
         return
     from app.services.membership import bot_can_verify
@@ -229,42 +254,72 @@ async def addtasks(message: Message, command: CommandObject) -> None:
 
     text = command.args or ""
     reward = Decimal("0.001")
+    nontg_reward: Decimal | None = None
     urls: list[str] = []
     for line in text.splitlines():
-        line = line.strip()
+        line = line.strip().strip("<>").strip()
         if not line:
             continue
-        if line.lower().startswith("reward="):
-            try:
-                reward = Decimal(line.split("=", 1)[1].strip())
-            except (InvalidOperation, IndexError):
-                pass
+        r = _parse_reward_line(line, ("reward",))
+        if r is not None and not re.search(r"https?://|t\.me/", line.lower()):
+            reward = r
             continue
-        m = re.search(r"https?://\S+", line)
+        nr = _parse_reward_line(line, ("nontg_reward", "non_tg_reward", "visit_reward"))
+        if nr is not None:
+            nontg_reward = nr
+            continue
+        m = re.search(r"https?://[^\s<>]+", line)
         if m:
-            urls.append(m.group())
+            urls.append(m.group().rstrip("<>.,"))
+        elif re.fullmatch(r"@[A-Za-z0-9_]{4,32}", line):
+            urls.append(line)
     if not urls:
         await message.answer(
-            "Paste task URLs (one per line) after the command.\n"
-            "Optional first line: <code>reward=0.001</code>\n\n"
-            "Example:\n<code>/addtasks\nreward=0.001\nhttps://t.me/YourChannel\n"
-            "https://whatsapp.com/channel/xxxx</code>"
+            "Paste task links (one per line) after the command.\n\n"
+            "<code>/addtasks\nreward=0.001\nnontg_reward=0.0015\n"
+            "https://t.me/YourChannel\nhttps://whatsapp.com/channel/xxxx</code>\n\n"
+            "Telegram links use <b>reward</b>; anything else uses <b>nontg_reward</b>."
         )
         return
+    if nontg_reward is None:
+        nontg_reward = reward
 
-    created = 0
+    created = tg_n = other_n = 0
     for url in urls:
         kind, ch, ln, title = classify(url)
         # A channel is only "verify" if the bot is actually admin there.
         if kind == "channel" and ch and not await bot_can_verify(message.bot, ch):
             kind, ln, ch = "visit", url, None
-        await create_task(kind, title, ch, ln, reward, message.from_user.id)
+        is_tg = _is_telegram_link(url)
+        r = reward if is_tg else nontg_reward
+        await create_task(kind, title, ch, ln, r, message.from_user.id)
         created += 1
+        tg_n += int(is_tg)
+        other_n += int(not is_tg)
     await message.answer(
-        f"✅ Added <b>{created}</b> task(s) at {usdt(reward)} each.\n"
-        "Channels where the bot is admin are auto-verified; everything else is "
-        "open-and-claim. Use /tasks to review."
+        f"✅ Added <b>{created}</b> task(s).\n"
+        f"• {tg_n} Telegram @ {usdt(reward)}\n"
+        f"• {other_n} other @ {usdt(nontg_reward)}\n\n"
+        "Telegram channels where the bot is admin are auto-verified; everything "
+        "else is open-and-claim. Use /tasks to review."
     )
+
+
+@router.message(Command("cleartasks"))
+async def cleartasks(message: Message, command: CommandObject) -> None:
+    """Delete ALL tasks. Requires confirmation: /cleartasks yes"""
+    if not _is_admin(message.from_user.id):
+        return
+    from app.services.tasks import clear_all_tasks
+
+    if (command.args or "").strip().lower() not in {"yes", "confirm", "y"}:
+        await message.answer(
+            "⚠️ This deletes <b>every</b> task. To confirm, send:\n"
+            "<code>/cleartasks yes</code>"
+        )
+        return
+    n = await clear_all_tasks()
+    await message.answer(f"🧹 Cleared <b>{n}</b> task(s). Add fresh ones with /addtasks.")
 
 
 @router.message(Command("tasks"))
