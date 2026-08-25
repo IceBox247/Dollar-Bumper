@@ -20,9 +20,16 @@ def classify(url: str) -> tuple[str, str | None, str | None, str]:
 
     kind == "channel" → a public t.me/<name> we can check membership for.
     kind == "visit"   → anything else (bot start links, mini-apps, private
-                        invites, external URLs): open + claim.
+                        invites, external URLs, WhatsApp / YouTube / X / any
+                        website): open + claim.
+
+    Accepts a full URL, a bare ``@username``, or a bare ``username`` and treats
+    those as a public Telegram channel.
     """
     url = url.strip()
+    # Bare @username or username -> treat as a Telegram channel link.
+    if re.fullmatch(r"@?[A-Za-z0-9_]{4,32}", url):
+        return "channel", f"@{url.lstrip('@')}", None, f"Join @{url.lstrip('@')}"
     if re.search(r"t\.me/\+", url):  # private invite link
         return "visit", None, url, "Join private group"
     m = re.search(r"t\.me/(" + _UNAME + r")(\?\S*)?$", url)

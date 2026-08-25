@@ -130,11 +130,12 @@ def withdraw_panel(user: User) -> str:
 def advertise_panel() -> str:
     return (
         "📢 <b>Advertise on Dollar Bumper</b>\n\n"
-        "Get real, engaged Telegram users to your channel. You set the reward per "
-        "join and your total budget — we handle delivery.\n\n"
+        "Drive real, engaged users to your <b>Telegram, WhatsApp, YouTube, X or "
+        "website</b>. You set the reward per action and your total budget — we "
+        "handle delivery.\n\n"
         f"💵 Minimum budget : <b>{usdt(settings.min_campaign_budget)}</b>\n"
         "⛓️ Pay in USDT (BEP20), verified automatically on-chain.\n\n"
-        "Ready to feature your channel?"
+        "Ready to feature your link?"
     )
 
 
@@ -143,8 +144,8 @@ def advertise_summary(title: str, channel: str, reward: Decimal, budget: Decimal
     return (
         "🧾 <b>Review your campaign</b>\n\n"
         f"📢 Title : <b>{title}</b>\n"
-        f"🔗 Channel : {channel}\n"
-        f"💰 Reward per join : <b>{usdt(reward)}</b>\n"
+        f"🔗 Target : {channel}\n"
+        f"💰 Reward per action : <b>{usdt(reward)}</b>\n"
         f"💵 Total budget : <b>{usdt(budget)}</b>\n"
         f"👥 Est. joins delivered : <b>~{joins}</b>\n\n"
         "Confirm to get the payment address."

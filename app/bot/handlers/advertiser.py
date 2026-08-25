@@ -1,6 +1,7 @@
 """Advertiser flow: create a featured-channel campaign and pay on-chain."""
 from __future__ import annotations
 
+import re
 from decimal import Decimal, InvalidOperation
 
 from aiogram import F, Router
@@ -17,8 +18,9 @@ from app.services.campaigns import (
     create_campaign,
     verify_and_activate,
 )
+from app.services.tasks import classify
 from app.utils.format import usdt
-from app.utils.validators import is_valid_tx_hash, normalize_channel
+from app.utils.validators import is_valid_tx_hash
 
 router = Router(name="advertiser")
 
@@ -40,21 +42,47 @@ async def adv_title(message: Message, state: FSMContext) -> None:
     await state.update_data(title=message.text.strip()[:128])
     await state.set_state(AdvertiseStates.channel)
     await message.answer(
-        "🔗 <b>Step 2/4</b> — Send your channel's @username or t.me link.\n\n"
-        "⚠️ Add this bot as an <b>admin</b> of that channel so we can verify joins."
+        "🔗 <b>Step 2/4</b> — Send the link users should act on.\n\n"
+        "Works with almost anything:\n"
+        "• Telegram <code>@channel</code> or <code>t.me/…</code> link\n"
+        "• WhatsApp channel/group link\n"
+        "• YouTube, X (Twitter), a website — any public link\n\n"
+        "💡 For a <b>Telegram</b> channel, add this bot as an <b>admin</b> there "
+        "and we'll verify real joins. Other links are open-and-claim."
     )
 
 
 @router.message(AdvertiseStates.channel, F.text, ~F.text.startswith("/"))
 async def adv_channel(message: Message, state: FSMContext) -> None:
-    channel = normalize_channel(message.text)
-    if not channel:
-        await message.answer("❌ That's not a valid channel. Send like <code>@mychannel</code>.")
+    raw = (message.text or "").strip()
+    # Require an http(s) link, a t.me link, or an @username — otherwise it's
+    # just stray text (or a menu label that slipped through).
+    looks_like_target = bool(
+        re.search(r"https?://", raw)
+        or "t.me/" in raw
+        or re.fullmatch(r"@?[A-Za-z0-9_]{4,32}", raw)
+    )
+    if not looks_like_target:
+        await message.answer(
+            "❌ Send a valid link or <code>@channel</code>.\n"
+            "Examples: <code>@mychannel</code>, <code>https://whatsapp.com/channel/…</code>, "
+            "<code>https://youtube.com/@you</code>.\n\n"
+            "Or tap a menu button to leave this step."
+        )
         return
-    await state.update_data(channel=channel)
+    kind, channel, link, auto_title = classify(raw)
+    await state.update_data(
+        kind=kind, channel=channel or "", link=link, target_label=(channel or link or auto_title)
+    )
     await state.set_state(AdvertiseStates.reward)
+    verify_note = (
+        "✅ Telegram channel — we'll verify real joins (make sure the bot is an admin there)."
+        if kind == "channel"
+        else "🔗 Open-and-claim link — users open it, then claim."
+    )
     await message.answer(
-        "💰 <b>Step 3/4</b> — Reward per join (USDT), e.g. <code>0.02</code>:"
+        f"{verify_note}\n\n"
+        "💰 <b>Step 3/4</b> — Reward per completion (USDT), e.g. <code>0.02</code>:"
     )
 
 
@@ -87,8 +115,9 @@ async def adv_budget(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(budget=str(budget))
     await state.set_state(AdvertiseStates.confirm)
+    target = data.get("target_label") or data.get("channel") or data.get("link") or "—"
     await message.answer(
-        ui.advertise_summary(data["title"], data["channel"], reward, budget),
+        ui.advertise_summary(data["title"], target, reward, budget),
         reply_markup=kb.advertise_confirm(),
     )
 
@@ -99,9 +128,11 @@ async def adv_confirm(cb: CallbackQuery, state: FSMContext) -> None:
     campaign = await create_campaign(
         advertiser_id=cb.from_user.id,
         title=data["title"],
-        channel=data["channel"],
+        channel=data.get("channel") or "",
         reward_per_task=Decimal(data["reward"]),
         budget_total=Decimal(data["budget"]),
+        kind=data.get("kind") or "channel",
+        link=data.get("link"),
     )
     await state.update_data(campaign_id=campaign.id)
     await state.set_state(AdvertiseStates.waiting_tx)
@@ -170,8 +201,9 @@ async def adv_list(cb: CallbackQuery) -> None:
         CampaignStatus.REJECTED.value: "🔴",
     }
     for c in campaigns:
+        target = c.channel or c.link or "—"
         lines.append(
-            f"{emoji.get(c.status, '•')} <b>{c.title}</b> ({c.channel})\n"
+            f"{emoji.get(c.status, '•')} <b>{c.title}</b> ({target})\n"
             f"   {c.status} · budget {usdt(c.budget_remaining)}/{usdt(c.budget_total)} left"
         )
     await cb.message.answer("\n".join(lines))

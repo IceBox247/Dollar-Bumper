@@ -32,17 +32,21 @@ async def create_campaign(
     reward_per_task: Decimal,
     budget_total: Decimal,
     description: str | None = None,
+    kind: str = "channel",
+    link: str | None = None,
 ) -> Campaign:
     async with Session() as s:
         campaign = Campaign(
             advertiser_id=advertiser_id,
             title=title[:128],
-            channel=channel,
+            channel=(channel or "")[:64],
             description=(description or "")[:1000] or None,
             reward_per_task=q(reward_per_task),
             budget_total=q(budget_total),
             budget_remaining=q(budget_total),
             status=CampaignStatus.PENDING_PAYMENT.value,
+            kind=kind,
+            link=link,
         )
         s.add(campaign)
         await s.commit()
