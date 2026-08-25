@@ -37,7 +37,9 @@ class Settings(BaseSettings):
     # Stored as raw strings; parsed into lists via the properties below.
     # (pydantic-settings JSON-parses list-typed env vars before validators run.)
     admin_ids_raw: str = Field(default="", validation_alias="ADMIN_IDS")
-    proof_channel_id: str = ""
+    # Channel where paid-withdrawal proofs are posted. Override via PROOF_CHANNEL_ID
+    # (a @username or numeric -100… id). Defaults to the Dollar Bumper Payout channel.
+    proof_channel_id: str = "-1003945413444"
     required_channels_raw: str = Field(default="", validation_alias="REQUIRED_CHANNELS")
 
     # Chain
