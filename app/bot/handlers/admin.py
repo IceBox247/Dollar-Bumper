@@ -411,6 +411,35 @@ async def checkjoin(message: Message, command: CommandObject) -> None:
     await message.answer("\n".join(lines))
 
 
+@router.message(Command("checkadmin"))
+async def checkadmin(message: Message, command: CommandObject) -> None:
+    """Is the bot an admin of a channel? /checkadmin @channel"""
+    if not _is_admin(message.from_user.id):
+        return
+    m = re.search(r"@?[A-Za-z0-9_]{4,32}", command.args or "")
+    if not m:
+        await message.answer("Usage: <code>/checkadmin @channel</code>")
+        return
+    ch = "@" + m.group().lstrip("@")
+    try:
+        bot_id = (await message.bot.me()).id
+        cm = await message.bot.get_chat_member(ch, bot_id)
+        ok = cm.status in {"administrator", "creator"}
+        await message.answer(
+            f"{'✅' if ok else '❌'} Bot status in {ch}: <b>{cm.status}</b>\n\n"
+            + ("The bot can verify joins here. Run /reverifytasks to enable it."
+               if ok else
+               "The bot must be an <b>admin</b> here to verify joins. "
+               "Add it as admin (read members is enough), then /reverifytasks.")
+        )
+    except Exception as e:  # noqa: BLE001
+        await message.answer(
+            f"❌ {ch} → {type(e).__name__}: {str(e)[:100]}\n\n"
+            "Usually means the bot isn't in the channel, or the @username is wrong. "
+            "For a private channel, the bot must be added as an admin."
+        )
+
+
 @router.message(Command("unflag"))
 async def unflag(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
