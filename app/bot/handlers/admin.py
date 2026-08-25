@@ -203,10 +203,21 @@ async def postproof(message: Message, command: CommandObject) -> None:
     from app.services.payouts import post_proof_for
 
     arg = (command.args or "").strip()
-    if not arg.isdigit():
-        await message.answer("Usage: <code>/postproof 12</code> (a withdrawal id from /wd)")
-        return
-    result = await post_proof_for(message.bot, int(arg))
+    if arg.isdigit():
+        wid = int(arg)
+    else:
+        # No id given → use the most recent withdrawal that has a tx hash.
+        async with Session() as s:
+            w = await s.scalar(
+                select(Withdrawal)
+                .where(Withdrawal.tx_hash.is_not(None))
+                .order_by(Withdrawal.id.desc())
+            )
+        if w is None:
+            await message.answer("No paid withdrawals to post yet. Use /wd to list them.")
+            return
+        wid = w.id
+    result = await post_proof_for(message.bot, wid)
     await message.answer(result)
 
 
