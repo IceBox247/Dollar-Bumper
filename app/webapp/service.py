@@ -95,6 +95,7 @@ def _name(first, username) -> str:
 
 
 async def leaderboard(u: WebAppUser) -> dict:
+    admin_ids = settings.admin_ids  # keep the project's own accounts off the board
     async with Session() as s:
         # Top referrers — by number of valid (credited) invites.
         inv = (
@@ -103,12 +104,15 @@ async def leaderboard(u: WebAppUser) -> dict:
             .group_by(User.referred_by)
             .subquery()
         )
-        ref_rows = (await s.execute(
+        ref_stmt = (
             select(User.id, User.first_name, User.username, inv.c.cnt, User.referral_earned)
             .join(inv, inv.c.ref == User.id)
             .order_by(inv.c.cnt.desc(), User.referral_earned.desc())
             .limit(30)
-        )).all()
+        )
+        if admin_ids:
+            ref_stmt = ref_stmt.where(User.id.not_in(admin_ids))
+        ref_rows = (await s.execute(ref_stmt)).all()
 
         # Top withdrawals — by all-time PAID amount.
         wd = (
@@ -117,12 +121,15 @@ async def leaderboard(u: WebAppUser) -> dict:
             .group_by(Withdrawal.user_id)
             .subquery()
         )
-        wd_rows = (await s.execute(
+        wd_stmt = (
             select(User.id, User.first_name, User.username, wd.c.tot)
             .join(User, User.id == wd.c.uid)
             .order_by(wd.c.tot.desc())
             .limit(30)
-        )).all()
+        )
+        if admin_ids:
+            wd_stmt = wd_stmt.where(User.id.not_in(admin_ids))
+        wd_rows = (await s.execute(wd_stmt)).all()
 
     return {
         "ok": True,

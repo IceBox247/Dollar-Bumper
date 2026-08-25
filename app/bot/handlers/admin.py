@@ -440,6 +440,39 @@ async def checkadmin(message: Message, command: CommandObject) -> None:
         )
 
 
+@router.message(Command("refs"))
+async def refs(message: Message, command: CommandObject) -> None:
+    """List a user's referrals and why each did/didn't pay. /refs [user_id]"""
+    if not _is_admin(message.from_user.id):
+        return
+    uid = _uid(command.args) or message.from_user.id
+    async with Session() as s:
+        rows = list((await s.scalars(
+            select(User).where(User.referred_by == uid).order_by(User.created_at.desc())
+        )).all())
+    if not rows:
+        await message.answer(f"No referrals found for <code>{uid}</code>.")
+        return
+    paid = 0
+    lines = [f"👥 <b>Referrals of</b> <code>{uid}</code> — {len(rows)} total:"]
+    for r in rows[:40]:
+        name = r.first_name or (("@" + r.username) if r.username else str(r.id))
+        if not r.onboarded:
+            status = "⏳ hasn't finished onboarding (join channels)"
+        elif r.flagged:
+            status = "⚠️ flagged (same device/IP) — not paid"
+        elif r.referral_credited:
+            status = "✅ paid"
+            paid += 1
+        else:
+            status = "… pending"
+        lines.append(f"• {name} — {status}")
+    lines.append(f"\n💰 Paid referrals: <b>{paid}</b>")
+    if len(rows) > 40:
+        lines.append(f"(showing 40 of {len(rows)})")
+    await message.answer("\n".join(lines))
+
+
 @router.message(Command("unflag"))
 async def unflag(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
