@@ -85,6 +85,7 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     used_ag = row.ad_count_adsgram if row.ad_day == today else 0
     used_mt = row.ad_count_monetag if row.ad_day == today else 0
+    game_plays_used = row.game_plays if row.game_day == today else 0
 
     return {
         "ok": True,
@@ -117,6 +118,9 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
             "spin_ready": spin_ready,
             "spin_next_sec": spin_next,
             "game_reward_cap": settings.game_reward_cap,
+            "game_daily_plays": settings.game_daily_plays,
+            "game_plays_used": game_plays_used,
+            "game_ads_per_play": settings.game_ads_per_play,
             "ads": {
                 "adsgram_block_id": settings.adsgram_block_id,
                 "monetag_zone_id": settings.monetag_zone_id,

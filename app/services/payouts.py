@@ -176,7 +176,8 @@ async def confirm_payouts(bot: Bot, limit: int = 10) -> int:
                 await _post_proof(bot, q(row.amount), row.wallet_address, row.tx_hash)
                 await _safe_dm(bot, row.user_id,
                     f"✅ <b>Paid!</b> {usdt(row.amount)} sent on-chain.\n\n"
-                    f"🔗 <a href='{settings.explorer_tx_url}{row.tx_hash}'>View transaction</a>")
+                    f"🧾 <b>Transaction hash:</b>\n<code>{row.tx_hash}</code>\n\n"
+                    f"🔗 <a href='{settings.explorer_tx_url}{row.tx_hash}'>View on BscScan</a>")
             else:  # failed / reverted → refund
                 row.status = WithdrawalStatus.FAILED.value
                 row.error = "on-chain revert"

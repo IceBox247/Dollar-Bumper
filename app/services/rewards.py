@@ -98,22 +98,32 @@ async def claim_ad(user_id: int, network: str) -> Result:
 
 
 async def game_reward(user_id: int, score: int) -> Result:
-    """Award Bumps for an arcade game session (capped, anti-abuse)."""
+    """Award Bumps for an arcade game session — capped per round AND per day so
+    users can't farm unlimited free points."""
     try:
         score = max(0, int(score))
     except (TypeError, ValueError):
         return Result(False, "Bad score.")
     reward = min(score * max(1, settings.game_reward_points), settings.game_reward_cap)
+    today = _today()
     async with Session() as s:
         u = await _get(s, user_id)
         if u is None:
             return Result(False, "User not found.")
         if u.is_banned:
             return Result(False, "Your account is restricted.")
+        if u.game_day != today:  # new day → reset the play counter
+            u.game_day = today
+            u.game_plays = 0
+        if int(u.game_plays or 0) >= settings.game_daily_plays:
+            return Result(False, "You've used all your game rounds for today. Come back tomorrow! ⏳",
+                          balance_points=int(u.points or 0), extra={"plays_left": 0})
+        u.game_plays = int(u.game_plays or 0) + 1
         u.points = int(u.points or 0) + reward
-        new_points = u.points
+        new_points, left = u.points, settings.game_daily_plays - u.game_plays
         await s.commit()
-    return Result(True, f"+{reward} Bumps!", points=reward, balance_points=new_points)
+    return Result(True, f"+{reward} Bumps!", points=reward, balance_points=new_points,
+                  extra={"plays_left": left})
 
 
 async def convert_points(user_id: int, amount: int | None = None) -> Result:

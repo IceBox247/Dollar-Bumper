@@ -73,6 +73,8 @@ class Settings(BaseSettings):
     ad_daily_monetag: int = 3             # Monetag ads/day
     game_reward_points: int = 1           # Bumps per point scored in the arcade game
     game_reward_cap: int = 50             # max Bumps per game session
+    game_daily_plays: int = 5             # paid arcade rounds per day (anti-farm)
+    game_ads_per_play: int = 1            # ads a user must watch before each round
 
     # Ad network IDs (leave blank to disable that network).
     adsgram_block_id: str = ""            # Adsgram Block ID (e.g. "int-12345")

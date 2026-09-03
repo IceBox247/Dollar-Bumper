@@ -52,7 +52,8 @@
   .stat .k{font-size:10px;color:var(--sub);font-weight:700;letter-spacing:.04em}
   .stat .v{font-size:16px;font-weight:900;margin-top:3px}
 
-  .sec{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.14em;font-weight:800;margin:22px 4px 11px}
+  .sec{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.14em;font-weight:800;margin:24px 4px 12px;display:flex;align-items:center;gap:8px}
+  .sec:before{content:"";width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--gold1));box-shadow:0 0 10px var(--glow)}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;
     backdrop-filter:blur(10px);box-shadow:0 10px 30px -18px rgba(0,0,0,.8)}
@@ -835,14 +836,16 @@ function loadAds(ads){
     s.dataset.zone=ads.monetag_zone_id; s.dataset.sdk='show_'+ads.monetag_zone_id;
     s.onload=()=>{ _monetagFn=window['show_'+ads.monetag_zone_id]; }; document.head.appendChild(s); }
 }
-function adAvailable(){ if(_adsgram) return 'adsgram'; if(_monetagFn||(_monetagZone&&window['show_'+_monetagZone])) return 'monetag'; return null; }
-function showAd(network){
-  return new Promise((resolve,reject)=>{
-    try{
-      if(network==='adsgram'){ if(!_adsgram) return reject('noad'); _adsgram.show().then(resolve).catch(reject); }
-      else { const fn=_monetagFn||window['show_'+_monetagZone]; if(!fn) return reject('noad'); fn().then(resolve).catch(reject); }
-    }catch(e){ reject(e); }
-  });
+function _configuredNet(){ const g=STATE&&STATE.game&&STATE.game.ads;
+  if(!g) return null; if(g.adsgram_block_id) return 'adsgram'; if(g.monetag_zone_id) return 'monetag'; return null; }
+function adAvailable(){ if(_adsgram) return 'adsgram'; if(_monetagFn||(_monetagZone&&window['show_'+_monetagZone])) return 'monetag'; return _configuredNet(); }
+function _adReady(net){ return net==='adsgram' ? !!_adsgram : !!(_monetagFn||(_monetagZone&&window['show_'+_monetagZone])); }
+function _waitAd(net,ms){ return new Promise(res=>{ const t0=Date.now();
+  (function tick(){ if(_adReady(net)) return res(true); if(Date.now()-t0>ms) return res(false); setTimeout(tick,200); })(); }); }
+async function showAd(network){
+  const ok=await _waitAd(network, 4500); if(!ok) throw 'noad';   // wait for the SDK to load
+  if(network==='adsgram') return _adsgram.show();
+  const fn=_monetagFn||window['show_'+_monetagZone]; return fn();
 }
 function maybeEntryAd(){
   try{ if(sessionStorage.getItem('db_entry_ad')) return; sessionStorage.setItem('db_entry_ad','1'); }catch(e){}
@@ -897,7 +900,18 @@ async function watchAd(net){
 
 /* ---- Bumper Blitz (tap game) ---- */
 let _blitzRunning=false;
-function startBlitz(){
+async function startBlitz(){
+  if(_blitzRunning) return;
+  const g=STATE&&STATE.game;
+  if(g){ const left=(g.game_daily_plays||5)-(g.game_plays_used||0);
+    if(left<=0){ toast('⏳ No game rounds left today — come back tomorrow!'); return; } }
+  // Must watch the required ad(s) before playing (only when ads are set up).
+  const need=(g&&g.game_ads_per_play)||1, net=adAvailable();
+  if(net){ for(let i=0;i<need;i++){ toast('📺 Ad '+(i+1)+' of '+need+'…');
+    try{ await showAd(net); }catch(e){ toast('Please watch the ad to play.'); return; } } }
+  _runBlitz();
+}
+function _runBlitz(){
   if(_blitzRunning) return; _blitzRunning=true;
   const ov=document.getElementById('blitz'); ov.classList.remove('hidden');
   const cv=document.getElementById('blitzCanvas'); const ctx=cv.getContext('2d');

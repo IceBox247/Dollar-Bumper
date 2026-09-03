@@ -59,6 +59,9 @@ class User(Base):
     ad_day: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
     ad_count_adsgram: Mapped[int] = mapped_column(default=0)
     ad_count_monetag: Mapped[int] = mapped_column(default=0)
+    # Daily arcade-game play cap (reset with game_day).
+    game_day: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    game_plays: Mapped[int] = mapped_column(default=0)
 
 
 class Campaign(Base):
