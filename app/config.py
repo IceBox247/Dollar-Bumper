@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     game_reward_cap: int = 50             # max Bumps per game session
     game_daily_plays: int = 5             # paid arcade rounds per day (anti-farm)
     game_ads_per_play: int = 1            # ads a user must watch before each round
+    # Social handles: Bumps awarded once per distinct platform a user links, and
+    # whether a linked social is required before doing off-Telegram tasks.
+    social_reward_points: int = 25        # Bumps per social handle added (once each)
+    require_social_for_offsite: bool = True
 
     # Ad network IDs (override via env; leave blank to disable that network).
     adsgram_block_id: str = ""            # Adsgram Block ID (e.g. "int-12345")
@@ -138,6 +142,15 @@ class Settings(BaseSettings):
         if d < 0 or d > 1:
             return Decimal("0.40")
         return d
+
+    @field_validator("require_social_for_offsite", mode="before")
+    @classmethod
+    def _bool_default_true(cls, v):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return True
+        if isinstance(v, str):
+            return v.strip().lower() not in {"0", "false", "no", "off"}
+        return bool(v)
 
     @field_validator("ip_flag_threshold", mode="before")
     @classmethod

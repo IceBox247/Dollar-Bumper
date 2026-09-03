@@ -62,6 +62,11 @@ class User(Base):
     # Daily arcade-game play cap (reset with game_day).
     game_day: Mapped[str | None] = mapped_column(String(10), nullable=True)
     game_plays: Mapped[int] = mapped_column(default=0)
+    # Social handles the user added (JSON string {platform: handle}) so they can
+    # do off-Telegram tasks; social_reward_count = distinct platforms already
+    # paid a Bumps bonus (so each new platform is rewarded once).
+    socials: Mapped[str | None] = mapped_column(Text, nullable=True)
+    social_reward_count: Mapped[int] = mapped_column(default=0)
 
 
 class Campaign(Base):

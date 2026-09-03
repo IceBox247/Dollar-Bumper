@@ -68,7 +68,7 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
 
     from datetime import datetime, timedelta, timezone
 
-    from app.services.rewards import points_to_usdt
+    from app.services.rewards import SOCIAL_PLATFORMS, load_socials, points_to_usdt
 
     pts = int(row.points or 0)
     # Spin readiness
@@ -100,6 +100,13 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
         "onboarded": bool(row.onboarded),
         "points": pts,
         "points_usd": _q(points_to_usdt(pts)),
+        "socials": load_socials(row.socials),
+        "social": {
+            "platforms": [{"key": k, "label": v} for k, v in SOCIAL_PLATFORMS.items()],
+            "reward": settings.social_reward_points,
+            "linked": int(row.social_reward_count or 0),
+            "required_for_offsite": bool(settings.require_social_for_offsite),
+        },
         "referral_link": (
             f"https://t.me/{_bot_username}?start={user.id}" if _bot_username else ""
         ),
@@ -280,11 +287,32 @@ async def tasks_list(u: WebAppUser) -> dict:
     return {"ok": True, "tasks": tasks}
 
 
+def _is_offsite(url: str) -> bool:
+    """True for links that leave Telegram (websites, X, YouTube, WhatsApp…)."""
+    low = (url or "").lower()
+    if not low:
+        return False
+    return "t.me/" not in low and "telegram.me/" not in low
+
+
+async def _has_socials(user_id: int) -> bool:
+    from app.services.rewards import load_socials
+    async with Session() as s:
+        u = await s.get(User, user_id)
+        return bool(u and load_socials(u.socials))
+
+
 async def task_verify(u: WebAppUser, campaign_id: int, bot: Bot) -> dict:
     async with Session() as s:
         c = await s.get(Campaign, campaign_id)
     if c is None:
         return {"ok": False, "error": "Task not found."}
+    # Off-Telegram tasks require the user to have linked at least one social
+    # handle first (so we can hold them accountable for external actions).
+    if (settings.require_social_for_offsite and c.kind == "visit"
+            and _is_offsite(_task_url(c)) and not await _has_socials(u.id)):
+        return {"ok": False, "need_socials": True,
+                "error": "Add a social handle first to unlock off-Telegram tasks. 🔗"}
     # Channel tasks: verify REAL membership before crediting (fail closed).
     # Visit tasks (bot links, private invites, external): honor-based claim.
     if c.kind == "channel" and c.channel:
@@ -358,6 +386,15 @@ async def game_finish(u: WebAppUser, score) -> dict:
     from app.services.rewards import game_reward
     r = await game_reward(u.id, score)
     return {"ok": r.ok, "message": r.message, "reward": r.points, "points": r.balance_points}
+
+
+async def save_socials_action(u: WebAppUser, socials) -> dict:
+    from app.services.rewards import save_socials
+    if not isinstance(socials, dict):
+        return {"ok": False, "error": "Enter at least one handle."}
+    r = await save_socials(u.id, socials)
+    return {"ok": r.ok, "message": r.message, "reward": r.points,
+            "points": r.balance_points, **(r.extra or {})}
 
 
 async def convert_points_action(u: WebAppUser, amount=None) -> dict:

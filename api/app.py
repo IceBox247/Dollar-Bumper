@@ -70,6 +70,8 @@ async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
         return await service.game_finish(user, data.get("score"))
     if action == "convert_points":
         return await service.convert_points_action(user, data.get("amount"))
+    if action == "save_socials":
+        return await service.save_socials_action(user, data.get("socials"))
     return {"ok": False, "error": "unknown action", "_status": 400}
 
 

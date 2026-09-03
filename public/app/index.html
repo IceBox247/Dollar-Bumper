@@ -34,6 +34,12 @@
   .brand .chip{margin-left:auto;font-size:10.5px;font-weight:800;color:#0a2413;
     background:linear-gradient(90deg,var(--green),var(--green2));padding:6px 11px;border-radius:999px;
     box-shadow:0 4px 16px rgba(40,224,122,.35)}
+  .brand .coinpill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    font-size:14px;font-weight:900;color:var(--gold1);padding:7px 13px 7px 10px;border-radius:999px;
+    background:linear-gradient(100deg,rgba(247,214,78,.14),rgba(212,160,23,.08));
+    border:1px solid var(--line2);box-shadow:0 4px 18px -6px rgba(244,196,48,.4);transition:transform .08s}
+  .brand .coinpill:active{transform:scale(.94)}
+  .brand .coinpill .ci{font-size:15px;filter:drop-shadow(0 0 6px rgba(244,196,48,.6))}
 
   /* balance hero */
   .hero{position:relative;border-radius:24px;padding:24px 22px;overflow:hidden;
@@ -41,6 +47,10 @@
     border:1px solid var(--line2);box-shadow:0 18px 50px -20px rgba(0,0,0,.7),inset 0 0 40px rgba(40,224,122,.06)}
   .hero:before{content:"";position:absolute;right:-30px;top:-30px;width:170px;height:170px;
     background:radial-gradient(circle,rgba(244,196,48,.22),transparent 70%)}
+  .hero:after{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.09),transparent);
+    transform:skewX(-18deg);animation:shine 5.5s ease-in-out infinite;pointer-events:none}
+  @keyframes shine{0%,60%{left:-60%}88%,100%{left:130%}}
   .hero .lbl{font-size:11px;letter-spacing:.16em;color:var(--sub);font-weight:800;text-transform:uppercase}
   .hero .amt{font-size:44px;font-weight:900;letter-spacing:-.02em;margin-top:6px;line-height:1;
     background:linear-gradient(90deg,var(--gold1),#ffe9a0 55%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -65,12 +75,14 @@
 
   /* quick-action tiles */
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .tile{position:relative;border-radius:20px;padding:16px;cursor:pointer;overflow:hidden;transition:transform .08s;
-    min-height:124px;display:flex;flex-direction:column;border:1px solid var(--line);
-    background:linear-gradient(158deg,rgba(20,52,32,.92),rgba(6,24,14,.86))}
-  .tile:active{transform:scale(.97)}
-  .tile:after{content:"";position:absolute;right:-26px;bottom:-26px;width:96px;height:96px;border-radius:50%}
-  .tile .tile-ic{width:48px;height:48px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .tile{position:relative;border-radius:22px;padding:16px;cursor:pointer;overflow:hidden;transition:transform .1s,box-shadow .2s;
+    min-height:126px;display:flex;flex-direction:column;border:1px solid var(--line);
+    background:linear-gradient(158deg,rgba(20,52,32,.92),rgba(6,24,14,.86));
+    box-shadow:0 12px 30px -18px rgba(0,0,0,.85)}
+  .tile:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.06),transparent 42%);pointer-events:none}
+  .tile:active{transform:scale(.96)}
+  .tile:after{content:"";position:absolute;right:-26px;bottom:-26px;width:110px;height:110px;border-radius:50%}
+  .tile .tile-ic{width:50px;height:50px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:25px}
   .tile .t{font-size:15.5px;font-weight:800;margin-top:auto;padding-top:12px}
   .tile .d{font-size:11.5px;color:var(--sub);margin-top:3px;font-weight:600}
   .tile.gold{border-color:rgba(244,196,48,.32)}
@@ -98,11 +110,12 @@
   .lb-val{font-weight:900;font-size:14px;color:var(--gold1);flex-shrink:0}
   .lb-sub{font-size:11px;color:var(--sub)}
 
-  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:14px;
-    padding:15px;font-size:15px;font-weight:800;cursor:pointer;transition:transform .07s,filter .2s;font-family:inherit;margin-top:11px}
+  .btn{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:15px;
+    padding:15px;font-size:15px;font-weight:900;cursor:pointer;transition:transform .07s,filter .2s;font-family:inherit;margin-top:11px;overflow:hidden}
+  .btn:before{content:"";position:absolute;inset:0 0 55% 0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent);pointer-events:none}
   .btn:active{transform:scale(.98)}
-  .btn.gold{background:linear-gradient(100deg,var(--gold1),var(--gold2));color:#241a00;box-shadow:0 8px 24px -8px rgba(244,196,48,.55)}
-  .btn.green{background:linear-gradient(100deg,var(--green),var(--green2));color:#052312;box-shadow:0 8px 24px -8px var(--glow)}
+  .btn.gold{background:linear-gradient(100deg,var(--gold1),var(--gold2));color:#241a00;box-shadow:0 10px 26px -8px rgba(244,196,48,.6)}
+  .btn.green{background:linear-gradient(100deg,var(--green),var(--green2));color:#052312;box-shadow:0 10px 26px -8px var(--glow)}
   .btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
   .btn.sm{padding:12px;font-size:14px}
   .btn:disabled{opacity:.55}
@@ -185,7 +198,7 @@
   <div class="brand">
     <img class="logo" src="/app/logo.png" alt="Dollar Bumper" />
     <div class="name">DOLLAR<span>BUMPER</span></div>
-    <span class="chip">⛓ BEP20</span>
+    <span class="coinpill" onclick="go('play')"><span class="ci">💎</span><b id="coinPill">0</b></span>
   </div>
 
   <!-- HOME -->
@@ -207,6 +220,14 @@
       <p>Your points balance: <b id="bumpsBal">0</b> Bumps<br>
         <span style="font-size:11.5px">Earn from games &amp; ads · convert to withdrawable USDT.</span></p>
       <button class="btn green sm" onclick="convertBumps()">🔁 Convert to USDT</button>
+    </div>
+
+    <!-- Social handles -->
+    <div class="card" id="socialsCard">
+      <h3>🔗 Link Your Socials <span class="reward" id="socReward">+25</span></h3>
+      <p id="socLead">Add your social handles to earn Bumps — and to unlock tasks outside Telegram.</p>
+      <div id="socInputs" class="hidden"></div>
+      <button class="btn gold sm" id="socBtn" onclick="toggleSocials()">➕ Add Social Handles</button>
     </div>
 
     <div class="sec">Quick Actions</div>
@@ -319,6 +340,12 @@
       <p>Tap the falling gems before time runs out — earn up to <b id="blitzCap">50</b> Bumps a round.</p>
       <button class="btn green" onclick="startBlitz()">🎯 Play Bumper Blitz</button>
     </div>
+    <div class="card">
+      <h3>🪙 Gold Rush <span class="reward">catch &amp; earn</span></h3>
+      <p>Slide the basket to catch falling gold — dodge the bombs! Earn up to <b id="goldCap">50</b> Bumps a round.</p>
+      <button class="btn gold" onclick="startGold()">🧺 Play Gold Rush</button>
+    </div>
+    <div class="thint" id="playLeft" style="text-align:center;margin-top:4px"></div>
   </div>
 
   <!-- WATCH & EARN (ADS) -->
@@ -335,6 +362,15 @@
     <div class="ob-h" style="font-size:18px">💎 <span id="blitzScore">0</span></div>
   </div>
   <canvas id="blitzCanvas"></canvas>
+</div>
+
+<!-- Gold Rush game overlay -->
+<div class="overlay hidden" id="gold">
+  <div style="position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;z-index:2">
+    <div class="ob-h" style="font-size:18px">⏱️ <span id="goldTime">25</span>s</div>
+    <div class="ob-h" style="font-size:18px">🪙 <span id="goldScore">0</span></div>
+  </div>
+  <canvas id="goldCanvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none"></canvas>
 </div>
 
 <div class="nav">
@@ -451,12 +487,18 @@ function applyHome(d){
   else{ tile.className='tile amber'; document.getElementById('deviceIc').textContent='⚠️';
     document.getElementById('deviceTxt').textContent='Under review'; }
   // Bumps points
-  const bb=document.getElementById('bumpsBal'); if(bb) bb.textContent = (d.points!=null?d.points:0);
+  const pts = (d.points!=null?d.points:0);
+  const bb=document.getElementById('bumpsBal'); if(bb) bb.textContent = pts;
   const bu=document.getElementById('bumpsUsd'); if(bu) bu.textContent = '≈ $'+fmt(d.points_usd||'0');
+  const cp=document.getElementById('coinPill'); if(cp) cp.textContent = pts>999?(Math.round(pts/100)/10)+'k':pts;
   if(d.game){ const sm=document.getElementById('spinMax'); if(sm&&d.game.spin_rewards) sm.textContent='win up to '+Math.max.apply(null,d.game.spin_rewards);
     const sc=document.getElementById('spinCd'); if(sc) sc.textContent=d.game.spin_cooldown_hours;
     const bc=document.getElementById('blitzCap'); if(bc) bc.textContent=d.game.game_reward_cap;
+    const gc=document.getElementById('goldCap'); if(gc) gc.textContent=d.game.game_reward_cap;
+    const pl=document.getElementById('playLeft'); if(pl){ const left=(d.game.game_daily_plays||5)-(d.game.game_plays_used||0);
+      pl.textContent = left>0 ? ('🎮 '+left+' free round'+(left===1?'':'s')+' left today') : '⏳ No rounds left — back tomorrow!'; }
     loadAds(d.game.ads); }
+  renderSocials(d);
 }
 
 async function loadHome(){
@@ -655,6 +697,8 @@ async function claimTask(id){
   const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Claiming…';
   const d = await api('verify',{campaign_id:id});
   if(d.ok){ haptic('success'); clearOpened(id); toast('✅ '+usdt(d.reward)+' claimed!'); await loadHome(); await loadTasks(); }
+  else if(d.need_socials){ haptic('error'); toast('🔗 Add a social handle first to unlock this task.');
+    b.disabled=false; b.innerHTML='✅ Claim'; openSocials(); }
   else{ haptic('error'); toast(d.error||'Could not claim'); b.disabled=false; b.innerHTML='✅ Claim'; }
 }
 function toggleWallet(){
@@ -825,16 +869,70 @@ async function convertBumps(){
   else { haptic('error'); toast(d.error||d.message||'Cannot convert yet'); }
 }
 
+/* ---- Social handles ---- */
+const SOC_PH={x:'@yourhandle',instagram:'@yourhandle',tiktok:'@yourhandle',youtube:'channel / @handle',facebook:'profile / page'};
+const SOC_IC={x:'✖️',instagram:'📸',tiktok:'🎵',youtube:'▶️',facebook:'👍'};
+let _socOpen=false;
+function renderSocials(d){
+  const s=d&&d.social; if(!s) return;
+  const rw=document.getElementById('socReward'); if(rw) rw.textContent='+'+s.reward;
+  const linked=s.linked||0, lead=document.getElementById('socLead'), btn=document.getElementById('socBtn');
+  if(lead) lead.innerHTML = linked>0
+    ? ('✅ <b>'+linked+'</b> social'+(linked===1?'':'s')+' linked · off-Telegram tasks unlocked.')
+    : ('Add your social handles to earn <b>'+s.reward+' Bumps</b> each — and unlock tasks outside Telegram.');
+  if(btn&&!_socOpen) btn.innerHTML = linked>0 ? '✏️ Edit Social Handles' : '➕ Add Social Handles';
+  if(_socOpen) buildSocInputs(d);
+}
+function buildSocInputs(d){
+  const box=document.getElementById('socInputs'); const s=d&&d.social; const have=(d&&d.socials)||{};
+  if(!box||!s) return; box.innerHTML='';
+  (s.platforms||[]).forEach(p=>{
+    const val=have[p.key]||'';
+    const row=document.createElement('div'); row.style.marginTop='8px';
+    row.innerHTML='<div class="thint" style="margin:0 0 3px">'+(SOC_IC[p.key]||'🔗')+' '+escapeHtml(p.label)+'</div>'+
+      '<input class="input" style="margin-top:0" id="soc_'+p.key+'" placeholder="'+escapeHtml(SOC_PH[p.key]||'@handle')+'" value="'+escapeHtml(val)+'">';
+    box.appendChild(row);
+  });
+}
+function toggleSocials(){
+  const box=document.getElementById('socInputs'); const btn=document.getElementById('socBtn');
+  if(!_socOpen){ _socOpen=true; box.classList.remove('hidden'); buildSocInputs(STATE); btn.innerHTML='💾 Save Handles'; }
+  else { saveSocials(); }
+}
+async function saveSocials(){
+  const s=STATE&&STATE.social; if(!s) return;
+  const socials={}; let any=false;
+  (s.platforms||[]).forEach(p=>{ const el=document.getElementById('soc_'+p.key); if(el&&el.value.trim()){ socials[p.key]=el.value.trim(); any=true; } });
+  if(!any){ toast('Enter at least one handle.'); return; }
+  const btn=document.getElementById('socBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving…';
+  const d=await api('save_socials',{socials});
+  btn.disabled=false;
+  if(d.ok){ haptic('success'); toast(d.message||'Saved'); _socOpen=false;
+    document.getElementById('socInputs').classList.add('hidden'); await loadHome(); }
+  else { haptic('error'); toast(d.error||d.message||'Could not save'); _socOpen=true; btn.innerHTML='💾 Save Handles'; }
+}
+function openSocials(){ go('home'); if(!_socOpen) toggleSocials();
+  const c=document.getElementById('socialsCard'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'}); }
+
 /* ---- Ad networks (Adsgram + Monetag), config-driven ---- */
-let _adsLoaded=false, _adsgram=null, _monetagFn=null, _monetagZone='';
+let _adsLoaded=false, _adsgram=null, _monetagFn=null, _monetagZone='', _monetagErr=false;
 function loadAds(ads){
   if(_adsLoaded||!ads) return; _adsLoaded=true;
   if(ads.adsgram_block_id){ const s=document.createElement('script'); s.src='https://sad.adsgram.ai/js/sad.min.js';
-    s.onload=()=>{ try{ _adsgram=window.Adsgram.init({blockId:ads.adsgram_block_id}); }catch(e){} };
+    s.onload=()=>{ try{ _adsgram=window.Adsgram.init({blockId:ads.adsgram_block_id}); }catch(e){ console.warn('Adsgram init failed',e); } };
+    s.onerror=()=>console.warn('Adsgram SDK blocked/failed to load');
     document.head.appendChild(s); }
-  if(ads.monetag_zone_id){ _monetagZone=ads.monetag_zone_id; const s=document.createElement('script'); s.src='//libtl.com/sdk.js';
-    s.dataset.zone=ads.monetag_zone_id; s.dataset.sdk='show_'+ads.monetag_zone_id;
-    s.onload=()=>{ _monetagFn=window['show_'+ads.monetag_zone_id]; }; document.head.appendChild(s); }
+  if(ads.monetag_zone_id){ _monetagZone=ads.monetag_zone_id;
+    const fn='show_'+ads.monetag_zone_id;
+    const s=document.createElement('script'); s.src='https://libtl.com/sdk.js';
+    s.dataset.zone=ads.monetag_zone_id; s.dataset.sdk=fn;
+    // The SDK defines window.show_<zone> synchronously on load; capture it, and
+    // keep polling briefly in case it registers a tick later.
+    s.onload=()=>{ _monetagFn=window[fn];
+      if(!_monetagFn){ let n=0; const iv=setInterval(()=>{ _monetagFn=window[fn];
+        if(_monetagFn||++n>25) clearInterval(iv); },200); } };
+    s.onerror=()=>{ _monetagErr=true; console.warn('Monetag SDK blocked/failed to load ('+s.src+')'); };
+    document.head.appendChild(s); }
 }
 function _configuredNet(){ const g=STATE&&STATE.game&&STATE.game.ads;
   if(!g) return null; if(g.adsgram_block_id) return 'adsgram'; if(g.monetag_zone_id) return 'monetag'; return null; }
@@ -845,10 +943,11 @@ function _waitAd(net,ms){ return new Promise(res=>{ const t0=Date.now();
 async function showAd(network){
   const ok=await _waitAd(network, 4500); if(!ok) throw 'noad';   // wait for the SDK to load
   const p = network==='adsgram' ? _adsgram.show() : (_monetagFn||window['show_'+_monetagZone])();
-  // Never hang forever if the network stalls (e.g. a format isn't activated).
+  // Never hang forever if the network stalls (e.g. a Monetag format isn't
+  // activated in the dashboard — its promise then simply never resolves).
   return Promise.race([
     Promise.resolve(p),
-    new Promise((_,rej)=>setTimeout(()=>rej('timeout'), 40000)),
+    new Promise((_,rej)=>setTimeout(()=>rej('timeout'), 20000)),
   ]);
 }
 function maybeEntryAd(){
@@ -902,21 +1001,30 @@ async function watchAd(net){
   else { haptic('error'); toast(d.message||'Could not claim'); }
 }
 
-/* ---- Bumper Blitz (tap game) ---- */
-let _blitzRunning=false;
-async function startBlitz(){
-  if(_blitzRunning) return;
+/* ---- Arcade games (shared gate: daily cap + required ad) ---- */
+let _gameRunning=false;
+async function _gameGate(){
+  if(_gameRunning) return false;
   const g=STATE&&STATE.game;
   if(g){ const left=(g.game_daily_plays||5)-(g.game_plays_used||0);
-    if(left<=0){ toast('⏳ No game rounds left today — come back tomorrow!'); return; } }
+    if(left<=0){ toast('⏳ No game rounds left today — come back tomorrow!'); return false; } }
   // Must watch the required ad(s) before playing (only when ads are set up).
   const need=(g&&g.game_ads_per_play)||1, net=adAvailable();
   if(net){ for(let i=0;i<need;i++){ toast('📺 Ad '+(i+1)+' of '+need+'…');
-    try{ await showAd(net); }catch(e){ toast('Please watch the ad to play.'); return; } } }
-  _runBlitz();
+    try{ await showAd(net); }catch(e){ toast('Please watch the ad to play.'); return false; } } }
+  return true;
 }
+async function finishGame(score,ic){
+  toast('Round over! '+(ic||'💎')+' '+score);
+  const d=await api('game_finish',{score:score});
+  if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); }
+  else { toast(d.message||'Try again'); }
+}
+
+/* ---- Bumper Blitz (tap game) ---- */
+async function startBlitz(){ if(await _gameGate()) _runBlitz(); }
 function _runBlitz(){
-  if(_blitzRunning) return; _blitzRunning=true;
+  if(_gameRunning) return; _gameRunning=true;
   const ov=document.getElementById('blitz'); ov.classList.remove('hidden');
   const cv=document.getElementById('blitzCanvas'); const ctx=cv.getContext('2d');
   const W=cv.width=ov.clientWidth, H=cv.height=ov.clientHeight;
@@ -927,8 +1035,8 @@ function _runBlitz(){
     for(const g of gems){ if(!g.hit && Math.hypot(g.x-px,g.y-py)<g.r+14){ g.hit=true; score++; document.getElementById('blitzScore').textContent=score; haptic('success'); break; } } };
   cv.addEventListener('touchstart',tap,{passive:true}); cv.addEventListener('mousedown',tap);
   const timer=setInterval(()=>{ t--; document.getElementById('blitzTime').textContent=t; if(t<=0) end(); },1000);
-  function end(){ if(!running) return; running=false; _blitzRunning=false; clearInterval(timer);
-    cv.removeEventListener('touchstart',tap); cv.removeEventListener('mousedown',tap); ov.classList.add('hidden'); finishBlitz(score); }
+  function end(){ if(!running) return; running=false; _gameRunning=false; clearInterval(timer);
+    cv.removeEventListener('touchstart',tap); cv.removeEventListener('mousedown',tap); ov.classList.add('hidden'); finishGame(score,'💎'); }
   function frame(now){ if(!running) return; const dt=Math.min(0.05,(now-last)/1000); last=now; spawn-=dt;
     if(spawn<=0){ gems.push({x:rnd(36,W-36),y:-30,r:22,vy:rnd(150,260),hit:false}); spawn=rnd(0.32,0.62); }
     ctx.clearRect(0,0,W,H);
@@ -939,11 +1047,39 @@ function _runBlitz(){
     requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
 }
-async function finishBlitz(score){
-  toast('Round over! 💎 '+score);
-  const d=await api('game_finish',{score:score});
-  if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); }
-  else { toast(d.message||'Try again'); }
+/* ---- Gold Rush (catch game) ---- */
+async function startGold(){ if(await _gameGate()) _runGold(); }
+function _runGold(){
+  if(_gameRunning) return; _gameRunning=true;
+  const ov=document.getElementById('gold'); ov.classList.remove('hidden');
+  const cv=document.getElementById('goldCanvas'); const ctx=cv.getContext('2d');
+  const W=cv.width=ov.clientWidth, H=cv.height=ov.clientHeight;
+  let items=[], score=0, t=25, last=performance.now(), spawn=0, running=true;
+  let bx=W/2; const bw=76, by=H-70;
+  document.getElementById('goldScore').textContent='0'; document.getElementById('goldTime').textContent='25';
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const move=(e)=>{ const r=cv.getBoundingClientRect(); const px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    bx=Math.max(bw/2,Math.min(W-bw/2,px)); if(e.cancelable&&e.touches)e.preventDefault(); };
+  cv.addEventListener('touchstart',move,{passive:false}); cv.addEventListener('touchmove',move,{passive:false}); cv.addEventListener('mousemove',move);
+  const timer=setInterval(()=>{ t--; document.getElementById('goldTime').textContent=t; if(t<=0) end(); },1000);
+  function end(){ if(!running) return; running=false; _gameRunning=false; clearInterval(timer);
+    cv.removeEventListener('touchstart',move); cv.removeEventListener('touchmove',move); cv.removeEventListener('mousemove',move);
+    ov.classList.add('hidden'); finishGame(score,'🪙'); }
+  function frame(now){ if(!running) return; const dt=Math.min(0.05,(now-last)/1000); last=now; spawn-=dt;
+    if(spawn<=0){ const bomb=Math.random()<0.22; items.push({x:rnd(28,W-28),y:-28,r:20,vy:rnd(180,300)+ (25-t)*4,bomb:bomb}); spawn=rnd(0.42,0.72); }
+    ctx.clearRect(0,0,W,H);
+    for(const it of items){ if(it.dead) continue; it.y+=it.vy*dt;
+      // catch check when near basket line
+      if(it.y>by-16 && it.y<by+30 && Math.abs(it.x-bx)<bw/2+6){
+        it.dead=true; if(it.bomb){ score=Math.max(0,score-3); haptic('warning'); }
+        else { score++; haptic('success'); } document.getElementById('goldScore').textContent=score; continue; }
+      ctx.font='30px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(it.bomb?'💣':'🪙',it.x,it.y); }
+    items=items.filter(it=>!it.dead && it.y<H+40);
+    // basket
+    ctx.font='42px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🧺',bx,by);
+    requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
 }
 
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }

@@ -2,6 +2,7 @@
 and converting points to withdrawable USDT."""
 from __future__ import annotations
 
+import json
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -124,6 +125,72 @@ async def game_reward(user_id: int, score: int) -> Result:
         await s.commit()
     return Result(True, f"+{reward} Bumps!", points=reward, balance_points=new_points,
                   extra={"plays_left": left})
+
+
+# Platforms a user can link. key -> friendly label.
+SOCIAL_PLATFORMS = {
+    "x": "X (Twitter)",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "youtube": "YouTube",
+    "facebook": "Facebook",
+}
+
+
+def _clean_handle(v) -> str:
+    """Normalize a submitted handle/URL to a short, safe string (or '')."""
+    s = str(v or "").strip()
+    if not s:
+        return ""
+    s = s.replace("http://", "").replace("https://", "").strip().strip("<>")
+    return s[:80]
+
+
+def load_socials(raw) -> dict:
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        d = json.loads(raw)
+        return d if isinstance(d, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+async def save_socials(user_id: int, socials: dict) -> Result:
+    """Store the user's social handles. Awards Bumps once per distinct platform
+    they link (so adding a new platform later still pays out)."""
+    incoming = {}
+    for key, val in (socials or {}).items():
+        k = str(key or "").strip().lower()
+        if k not in SOCIAL_PLATFORMS:
+            continue
+        handle = _clean_handle(val)
+        if handle:
+            incoming[k] = handle
+    async with Session() as s:
+        u = await _get(s, user_id)
+        if u is None:
+            return Result(False, "User not found.")
+        if u.is_banned:
+            return Result(False, "Your account is restricted.")
+        current = load_socials(u.socials)
+        current.update(incoming)               # merge (keep old, overwrite edited)
+        distinct = len(current)
+        already = int(u.social_reward_count or 0)
+        newly = max(0, distinct - already)
+        award = newly * max(0, settings.social_reward_points)
+        u.socials = json.dumps(current)
+        u.social_reward_count = distinct
+        if award:
+            u.points = int(u.points or 0) + award
+        new_points = u.points
+        await s.commit()
+    msg = (f"Saved! +{award} Bumps for linking your socials 🎉"
+           if award else "Socials updated ✅")
+    return Result(True, msg, points=award, balance_points=new_points,
+                  extra={"socials": current, "linked": distinct})
 
 
 async def convert_points(user_id: int, amount: int | None = None) -> Result:

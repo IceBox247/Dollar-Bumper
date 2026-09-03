@@ -88,6 +88,8 @@ _MIGRATIONS = [
     ("users", "ad_count_monetag", "INTEGER DEFAULT 0"),
     ("users", "game_day", "VARCHAR(10)"),
     ("users", "game_plays", "INTEGER DEFAULT 0"),
+    ("users", "socials", "TEXT"),
+    ("users", "social_reward_count", "INTEGER DEFAULT 0"),
 ]
 
 
@@ -130,7 +132,7 @@ async def ensure_initialized() -> None:
             # Touches the newest migrated column too, so a DB that predates the
             # latest columns triggers a real init (running migrations) rather
             # than silently 500ing later on a query that uses them.
-            await conn.execute(text("SELECT game_plays FROM users LIMIT 1"))
+            await conn.execute(text("SELECT social_reward_count FROM users LIMIT 1"))
         _initialized = True
         return
     except Exception:  # noqa: BLE001  (any failure -> do a full init)
