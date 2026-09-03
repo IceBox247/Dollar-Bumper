@@ -52,6 +52,14 @@ class User(Base):
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
+    # ── Gamified "Bumps" points (from games + ads); convert to USDT. ──
+    points: Mapped[int] = mapped_column(BigInteger, default=0)
+    last_spin_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Daily ad-watch caps (reset when ad_day rolls over to a new UTC date).
+    ad_day: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
+    ad_count_adsgram: Mapped[int] = mapped_column(default=0)
+    ad_count_monetag: Mapped[int] = mapped_column(default=0)
+
 
 class Campaign(Base):
     __tablename__ = "campaigns"

@@ -81,6 +81,11 @@ _MIGRATIONS = [
     ("users", "onboarded", "BOOLEAN DEFAULT FALSE"),
     ("campaigns", "kind", "VARCHAR(16) DEFAULT 'channel'"),
     ("campaigns", "link", "TEXT"),
+    ("users", "points", "BIGINT DEFAULT 0"),
+    ("users", "last_spin_at", "TIMESTAMPTZ"),
+    ("users", "ad_day", "VARCHAR(10)"),
+    ("users", "ad_count_adsgram", "INTEGER DEFAULT 0"),
+    ("users", "ad_count_monetag", "INTEGER DEFAULT 0"),
 ]
 
 
@@ -121,9 +126,9 @@ async def ensure_initialized() -> None:
     try:
         async with engine.connect() as conn:
             # Touches the newest migrated column too, so a DB that predates the
-            # task columns still triggers a real init rather than silently
-            # 500ing later on the tasks query.
-            await conn.execute(text("SELECT kind FROM campaigns LIMIT 1"))
+            # latest columns triggers a real init (running migrations) rather
+            # than silently 500ing later on a query that uses them.
+            await conn.execute(text("SELECT points FROM users LIMIT 1"))
         _initialized = True
         return
     except Exception:  # noqa: BLE001  (any failure -> do a full init)

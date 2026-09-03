@@ -66,6 +66,26 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
             except Exception:  # noqa: BLE001
                 _bot_username = None
 
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.rewards import points_to_usdt
+
+    pts = int(row.points or 0)
+    # Spin readiness
+    spin_ready, spin_next = True, 0
+    if row.last_spin_at is not None:
+        last = row.last_spin_at
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        ready_at = last + timedelta(hours=settings.spin_cooldown_hours)
+        now = datetime.now(timezone.utc)
+        if now < ready_at:
+            spin_ready = False
+            spin_next = int((ready_at - now).total_seconds())
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    used_ag = row.ad_count_adsgram if row.ad_day == today else 0
+    used_mt = row.ad_count_monetag if row.ad_day == today else 0
+
     return {
         "ok": True,
         "user": {"id": user.id, "first_name": user.first_name, "username": user.username},
@@ -77,6 +97,8 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
         "is_admin": settings.is_admin(user.id),
         "device_ok": device_ok,
         "onboarded": bool(row.onboarded),
+        "points": pts,
+        "points_usd": _q(points_to_usdt(pts)),
         "referral_link": (
             f"https://t.me/{_bot_username}?start={user.id}" if _bot_username else ""
         ),
@@ -86,6 +108,23 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
             "review_threshold": _q(settings.review_threshold),
             "min_campaign_budget": _q(settings.min_campaign_budget),
             "network": "BEP20 (BSC)",
+        },
+        "game": {
+            "points_per_usdt": settings.points_per_usdt,
+            "min_convert": settings.min_points_convert,
+            "spin_cooldown_hours": settings.spin_cooldown_hours,
+            "spin_rewards": settings.spin_rewards,
+            "spin_ready": spin_ready,
+            "spin_next_sec": spin_next,
+            "game_reward_cap": settings.game_reward_cap,
+            "ads": {
+                "adsgram_block_id": settings.adsgram_block_id,
+                "monetag_zone_id": settings.monetag_zone_id,
+                "adsgram": {"reward": settings.ad_reward_adsgram,
+                            "cap": settings.ad_daily_adsgram, "used": used_ag},
+                "monetag": {"reward": settings.ad_reward_monetag,
+                            "cap": settings.ad_daily_monetag, "used": used_mt},
+            },
         },
     }
 
@@ -294,6 +333,39 @@ async def withdraw(u: WebAppUser, amount, bot: Bot) -> dict:
             return {"ok": False, "error": "Enter a valid amount."}
     res = await request_withdrawal(u.id, amt, bot)
     return {"ok": res.ok, "message": res.message, "needs_review": res.needs_review}
+
+
+# ── Games / ads / points (Mini App) ──────────────────────────
+async def spin_wheel(u: WebAppUser) -> dict:
+    from app.services.rewards import spin
+    r = await spin(u.id)
+    return {"ok": r.ok, "message": r.message, "reward": r.points,
+            "points": r.balance_points, **(r.extra or {})}
+
+
+async def ad_reward(u: WebAppUser, network: str) -> dict:
+    from app.services.rewards import claim_ad
+    r = await claim_ad(u.id, network)
+    return {"ok": r.ok, "message": r.message, "reward": r.points,
+            "points": r.balance_points, **(r.extra or {})}
+
+
+async def game_finish(u: WebAppUser, score) -> dict:
+    from app.services.rewards import game_reward
+    r = await game_reward(u.id, score)
+    return {"ok": r.ok, "message": r.message, "reward": r.points, "points": r.balance_points}
+
+
+async def convert_points_action(u: WebAppUser, amount=None) -> dict:
+    from app.services.rewards import convert_points
+    amt = None
+    if amount not in (None, "", "all"):
+        try:
+            amt = int(amount)
+        except (TypeError, ValueError):
+            return {"ok": False, "error": "Enter a valid amount."}
+    r = await convert_points(u.id, amt)
+    return {"ok": r.ok, "message": r.message, "points": r.balance_points, **(r.extra or {})}
 
 
 # ── Advertiser flow (Mini App) ────────────────────────────────

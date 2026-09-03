@@ -62,6 +62,22 @@ class Settings(BaseSettings):
     # 2 = allow up to 2 accounts per IP, flag the 3rd+ (tolerant of shared/NAT).
     ip_flag_threshold: int = 2
 
+    # ── Gamified points ("Bumps") ──────────────────────────────
+    points_per_usdt: int = 10000          # 10,000 Bumps = 1 USDT
+    min_points_convert: int = 1000        # min Bumps to convert to USDT
+    spin_cooldown_hours: int = 12         # free Lucky Wheel spin every N hours
+    spin_rewards_raw: str = Field(default="5,10,15,20,5,10", validation_alias="SPIN_REWARDS")
+    ad_reward_adsgram: int = 15           # Bumps per Adsgram ad
+    ad_reward_monetag: int = 5            # Bumps per Monetag ad
+    ad_daily_adsgram: int = 4             # Adsgram ads/day
+    ad_daily_monetag: int = 3             # Monetag ads/day
+    game_reward_points: int = 1           # Bumps per point scored in the arcade game
+    game_reward_cap: int = 50             # max Bumps per game session
+
+    # Ad network IDs (leave blank to disable that network).
+    adsgram_block_id: str = ""            # Adsgram Block ID (e.g. "int-12345")
+    monetag_zone_id: str = ""             # Monetag Zone/Tag id (digits)
+
     # Storage
     database_url: str = "sqlite+aiosqlite:///data/dollar_bumper.db"
 
@@ -139,6 +155,11 @@ class Settings(BaseSettings):
 
     def is_admin(self, user_id: int) -> bool:
         return user_id in self.admin_ids
+
+    @property
+    def spin_rewards(self) -> list[int]:
+        vals = [v.strip() for v in self.spin_rewards_raw.split(",") if v.strip().isdigit()]
+        return [int(v) for v in vals] or [5, 10, 15, 20, 5, 10]
 
 
 @lru_cache

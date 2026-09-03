@@ -171,6 +171,12 @@
     padding:9px 16px;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer}
   .ch-ok{color:var(--green);font-size:20px;font-weight:900}
   .thint{font-size:11px;color:var(--sub);margin-top:8px;font-weight:600}
+  .spinbox{width:74px;height:90px;border-radius:16px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:var(--gold1);background:rgba(3,18,10,.5);transition:.15s}
+  .spinbox.on{border-color:var(--gold2);box-shadow:0 0 0 1px var(--gold2),0 0 22px rgba(244,196,48,.25)}
+  .adcard{display:flex;align-items:center;gap:12px}
+  .adcard .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(40,224,122,.14);flex-shrink:0}
+  #blitz{padding:0}
+  #blitzCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 </style>
 </head>
 <body>
@@ -194,8 +200,22 @@
       </div>
     </div>
 
+    <!-- Bumps points -->
+    <div class="card" style="border-color:var(--line2);margin-top:14px">
+      <h3>💎 Bumps <span class="reward" id="bumpsUsd">≈ $0</span></h3>
+      <p>Your points balance: <b id="bumpsBal">0</b> Bumps<br>
+        <span style="font-size:11.5px">Earn from games &amp; ads · convert to withdrawable USDT.</span></p>
+      <button class="btn green sm" onclick="convertBumps()">🔁 Convert to USDT</button>
+    </div>
+
     <div class="sec">Quick Actions</div>
     <div class="tiles">
+      <div class="tile gold" onclick="go('play')">
+        <div class="tile-ic">🎮</div><div class="t">Play &amp; Earn</div><div class="d">Games &amp; spin</div>
+      </div>
+      <div class="tile green" onclick="go('earn')">
+        <div class="tile-ic">📺</div><div class="t">Watch &amp; Earn</div><div class="d">Ads for Bumps</div>
+      </div>
       <div class="tile gold" onclick="go('tasks')">
         <div class="tile-ic">📋</div><div class="t">Earn Tasks</div><div class="d">Complete &amp; get paid</div>
       </div>
@@ -205,11 +225,11 @@
       <div class="tile gold" onclick="go('withdraw')">
         <div class="tile-ic">💸</div><div class="t">Withdraw</div><div class="d">Cash out on-chain</div>
       </div>
+      <div class="tile green" onclick="go('advertise')">
+        <div class="tile-ic">📢</div><div class="t">Advertise</div><div class="d">Promote your project</div>
+      </div>
       <div class="tile green" id="deviceTile" onclick="deviceInfo()">
         <div class="tile-ic" id="deviceIc">🛡️</div><div class="t">Device</div><div class="d" id="deviceTxt">Checking…</div>
-      </div>
-      <div class="tile gold" onclick="go('advertise')">
-        <div class="tile-ic">📢</div><div class="t">Advertise</div><div class="d">Promote your project</div>
       </div>
     </div>
 
@@ -280,6 +300,40 @@
     <div class="sec">📢 Advertise Your Project</div>
     <div id="advView"><div class="skeleton"></div></div>
   </div>
+
+  <!-- PLAY / GAMES -->
+  <div id="tab-play" class="hidden">
+    <div class="sec">🎮 Play &amp; Earn</div>
+    <div class="card" style="border-color:var(--line2)">
+      <h3>🎡 Lucky Spin <span class="reward" id="spinMax">win Bumps</span></h3>
+      <p>Free spin every <b id="spinCd">12</b>h. Watch a quick ad, then spin to win Bumps!</p>
+      <div id="spinWheel" style="display:flex;gap:8px;justify-content:center;margin:16px 0">
+        <div class="spinbox" id="sb0">?</div><div class="spinbox on" id="sb1">?</div><div class="spinbox" id="sb2">?</div>
+      </div>
+      <button class="btn gold" id="spinBtn" onclick="doSpin()">⚡ Spin Now</button>
+      <div class="thint" id="spinHint" style="text-align:center"></div>
+    </div>
+    <div class="card">
+      <h3>🚀 Bumper Blitz <span class="reward">tap &amp; earn</span></h3>
+      <p>Tap the falling gems before time runs out — earn up to <b id="blitzCap">50</b> Bumps a round.</p>
+      <button class="btn green" onclick="startBlitz()">🎯 Play Bumper Blitz</button>
+    </div>
+  </div>
+
+  <!-- WATCH & EARN (ADS) -->
+  <div id="tab-earn" class="hidden">
+    <div class="sec">📺 Watch &amp; Earn</div>
+    <div id="earnView"><div class="skeleton"></div><div class="skeleton"></div></div>
+  </div>
+</div>
+
+<!-- Bumper Blitz game overlay -->
+<div class="overlay hidden" id="blitz">
+  <div style="position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;z-index:2">
+    <div class="ob-h" style="font-size:18px">⏱️ <span id="blitzTime">20</span>s</div>
+    <div class="ob-h" style="font-size:18px">💎 <span id="blitzScore">0</span></div>
+  </div>
+  <canvas id="blitzCanvas"></canvas>
 </div>
 
 <div class="nav">
@@ -395,6 +449,13 @@ function applyHome(d){
     document.getElementById('deviceTxt').textContent='Verified'; }
   else{ tile.className='tile amber'; document.getElementById('deviceIc').textContent='⚠️';
     document.getElementById('deviceTxt').textContent='Under review'; }
+  // Bumps points
+  const bb=document.getElementById('bumpsBal'); if(bb) bb.textContent = (d.points!=null?d.points:0);
+  const bu=document.getElementById('bumpsUsd'); if(bu) bu.textContent = '≈ $'+fmt(d.points_usd||'0');
+  if(d.game){ const sm=document.getElementById('spinMax'); if(sm&&d.game.spin_rewards) sm.textContent='win up to '+Math.max.apply(null,d.game.spin_rewards);
+    const sc=document.getElementById('spinCd'); if(sc) sc.textContent=d.game.spin_cooldown_hours;
+    const bc=document.getElementById('blitzCap'); if(bc) bc.textContent=d.game.game_reward_cap;
+    loadAds(d.game.ads); }
 }
 
 async function loadHome(){
@@ -402,7 +463,7 @@ async function loadHome(){
   if(!d.ok){ toast(d.error==='network'?'Network hiccup — retrying…':(d.error||'Could not load')); return; }
   applyHome(d); cacheSet(d);
   if(!d.onboarded){ showOnboarding(); }
-  else { refreshTasks(false); }   // warm the Tasks tab in the background
+  else { refreshTasks(false); maybeEntryAd(); }   // warm tasks + show one entry ad per session
 }
 
 /* ---- Onboarding flow: human check -> IP verify -> welcome ---- */
@@ -634,14 +695,15 @@ async function doWithdraw(){
   b.disabled=false; b.innerHTML='💸 Withdraw to my wallet';
 }
 function go(tab){
-  ['home','tasks','ranks','invite','withdraw','advertise'].forEach(t=>{
-    const el=document.getElementById('tab-'+t); el.classList.toggle('hidden', t!==tab);
+  ['home','tasks','ranks','invite','withdraw','advertise','play','earn'].forEach(t=>{
+    const el=document.getElementById('tab-'+t); if(!el) return; el.classList.toggle('hidden', t!==tab);
     if(t===tab){ el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade'); }
   });
   document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
   if(tab==='tasks') loadTasks();
   if(tab==='ranks'){ lbData=null; loadLeaderboard(); }
   if(tab==='advertise') advHome();
+  if(tab==='earn') loadEarn();
   window.scrollTo(0,0);
 }
 
@@ -755,6 +817,117 @@ function renderLb(){
     box.appendChild(el);
   });
 }
+/* ---- Bumps: convert to USDT ---- */
+async function convertBumps(){
+  const d=await api('convert_points',{amount:'all'});
+  if(d.ok){ haptic('success'); toast(d.message||'Converted to USDT'); await loadHome(); }
+  else { haptic('error'); toast(d.error||d.message||'Cannot convert yet'); }
+}
+
+/* ---- Ad networks (Adsgram + Monetag), config-driven ---- */
+let _adsLoaded=false, _adsgram=null, _monetagFn=null, _monetagZone='';
+function loadAds(ads){
+  if(_adsLoaded||!ads) return; _adsLoaded=true;
+  if(ads.adsgram_block_id){ const s=document.createElement('script'); s.src='https://sad.adsgram.ai/js/sad.min.js';
+    s.onload=()=>{ try{ _adsgram=window.Adsgram.init({blockId:ads.adsgram_block_id}); }catch(e){} };
+    document.head.appendChild(s); }
+  if(ads.monetag_zone_id){ _monetagZone=ads.monetag_zone_id; const s=document.createElement('script'); s.src='//libtl.com/sdk.js';
+    s.dataset.zone=ads.monetag_zone_id; s.dataset.sdk='show_'+ads.monetag_zone_id;
+    s.onload=()=>{ _monetagFn=window['show_'+ads.monetag_zone_id]; }; document.head.appendChild(s); }
+}
+function adAvailable(){ if(_adsgram) return 'adsgram'; if(_monetagFn||(_monetagZone&&window['show_'+_monetagZone])) return 'monetag'; return null; }
+function showAd(network){
+  return new Promise((resolve,reject)=>{
+    try{
+      if(network==='adsgram'){ if(!_adsgram) return reject('noad'); _adsgram.show().then(resolve).catch(reject); }
+      else { const fn=_monetagFn||window['show_'+_monetagZone]; if(!fn) return reject('noad'); fn().then(resolve).catch(reject); }
+    }catch(e){ reject(e); }
+  });
+}
+function maybeEntryAd(){
+  try{ if(sessionStorage.getItem('db_entry_ad')) return; sessionStorage.setItem('db_entry_ad','1'); }catch(e){}
+  setTimeout(()=>{ const net=adAvailable(); if(net) showAd(net).catch(()=>{}); }, 1400);
+}
+
+/* ---- Lucky Spin ---- */
+async function doSpin(){
+  const btn=document.getElementById('spinBtn'), hint=document.getElementById('spinHint');
+  if(STATE&&STATE.game&&!STATE.game.spin_ready){ toast('⏳ Come back for your next free spin.'); return; }
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Loading ad…';
+  const net=adAvailable();
+  if(net){ try{ await showAd(net); }catch(e){} }   // watch an ad before the spin
+  btn.innerHTML='<span class="spin"></span> Spinning…'; animateSpin();
+  const d=await api('spin');
+  setTimeout(async()=>{
+    btn.disabled=false; btn.innerHTML='⚡ Spin Now';
+    if(d.ok){ haptic('success'); ['sb0','sb1','sb2'].forEach(id=>{const b=document.getElementById(id); if(b)b.textContent=d.reward;});
+      toast('🎉 You won '+d.reward+' Bumps!'); if(hint) hint.textContent='Next free spin in '+(STATE&&STATE.game?STATE.game.spin_cooldown_hours:12)+'h.'; await loadHome(); }
+    else { haptic('error'); toast(d.message||'Try again later'); if(hint) hint.textContent=d.message||''; }
+  }, 900);
+}
+function animateSpin(){
+  const ids=['sb0','sb1','sb2']; const rw=(STATE&&STATE.game&&STATE.game.spin_rewards)||[5,10,15,20];
+  let n=0; const iv=setInterval(()=>{ ids.forEach(id=>{const b=document.getElementById(id); if(b)b.textContent=rw[Math.floor(Math.random()*rw.length)];}); if(++n>10) clearInterval(iv); },80);
+}
+
+/* ---- Watch & Earn (ads) ---- */
+function loadEarn(){
+  const box=document.getElementById('earnView'); const g=STATE&&STATE.game;
+  if(!g){ box.innerHTML='<div class="empty">Loading…</div>'; return; }
+  const ads=g.ads;
+  function card(net,name,ic){ const info=ads[net]; const id=(net==='adsgram'?ads.adsgram_block_id:ads.monetag_zone_id);
+    const left=Math.max(0,info.cap-info.used);
+    return `<div class="card"><div class="adcard"><div class="ic">${ic}</div>
+      <div style="flex:1;min-width:0"><h3 style="margin:0">${name} <span class="reward">+${info.reward}</span></h3>
+      <div class="thint" style="margin-top:2px">${info.used}/${info.cap} today · ${left} left</div></div>
+      <button class="btn green sm" style="width:auto;margin:0;padding:11px 16px" ${(left<=0||!id)?'disabled':''} onclick="watchAd('${net}')">▶ Watch</button></div></div>`; }
+  box.innerHTML=`<div class="card" style="border-color:var(--line2)"><h3>📺 Watch &amp; Earn Bumps</h3>
+    <p>Watch a short ad to earn Bumps. Daily limits reset at midnight UTC.</p></div>`+
+    card('adsgram','Adsgram','📺')+card('monetag','Monetag','🎬');
+}
+async function watchAd(net){
+  const g=STATE&&STATE.game; if(!g) return; const info=g.ads[net];
+  if(info.used>=info.cap){ toast('No ads left today for this network.'); return; }
+  toast('Loading ad…');
+  try{ await showAd(net); }catch(e){ toast('Ad not available right now — try again.'); return; }
+  const d=await api('ad_reward',{network:net});
+  if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); loadEarn(); }
+  else { haptic('error'); toast(d.message||'Could not claim'); }
+}
+
+/* ---- Bumper Blitz (tap game) ---- */
+let _blitzRunning=false;
+function startBlitz(){
+  if(_blitzRunning) return; _blitzRunning=true;
+  const ov=document.getElementById('blitz'); ov.classList.remove('hidden');
+  const cv=document.getElementById('blitzCanvas'); const ctx=cv.getContext('2d');
+  const W=cv.width=ov.clientWidth, H=cv.height=ov.clientHeight;
+  let gems=[], score=0, t=20, last=performance.now(), spawn=0, running=true;
+  document.getElementById('blitzScore').textContent='0'; document.getElementById('blitzTime').textContent='20';
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const tap=(e)=>{ const r=cv.getBoundingClientRect(); const px=(e.touches?e.touches[0].clientX:e.clientX)-r.left, py=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+    for(const g of gems){ if(!g.hit && Math.hypot(g.x-px,g.y-py)<g.r+14){ g.hit=true; score++; document.getElementById('blitzScore').textContent=score; haptic('success'); break; } } };
+  cv.addEventListener('touchstart',tap,{passive:true}); cv.addEventListener('mousedown',tap);
+  const timer=setInterval(()=>{ t--; document.getElementById('blitzTime').textContent=t; if(t<=0) end(); },1000);
+  function end(){ if(!running) return; running=false; _blitzRunning=false; clearInterval(timer);
+    cv.removeEventListener('touchstart',tap); cv.removeEventListener('mousedown',tap); ov.classList.add('hidden'); finishBlitz(score); }
+  function frame(now){ if(!running) return; const dt=Math.min(0.05,(now-last)/1000); last=now; spawn-=dt;
+    if(spawn<=0){ gems.push({x:rnd(36,W-36),y:-30,r:22,vy:rnd(150,260),hit:false}); spawn=rnd(0.32,0.62); }
+    ctx.clearRect(0,0,W,H);
+    for(const g of gems){ if(g.hit) continue; g.y+=g.vy*dt;
+      ctx.beginPath(); ctx.fillStyle='rgba(244,196,48,.18)'; ctx.arc(g.x,g.y,g.r+6,0,7); ctx.fill();
+      ctx.font='30px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('💎',g.x,g.y); }
+    gems=gems.filter(g=>!g.hit && g.y<H+40);
+    requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+}
+async function finishBlitz(score){
+  toast('Round over! 💎 '+score);
+  const d=await api('game_finish',{score:score});
+  if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); }
+  else { toast(d.message||'Try again'); }
+}
+
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 function showOpenFromTelegram(){

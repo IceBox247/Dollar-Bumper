@@ -62,6 +62,14 @@ async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
         )
     if action == "adv_verify":
         return await service.advertise_verify(user, data.get("campaign_id"), data.get("tx_hash", ""))
+    if action == "spin":
+        return await service.spin_wheel(user)
+    if action == "ad_reward":
+        return await service.ad_reward(user, data.get("network", ""))
+    if action == "game_finish":
+        return await service.game_finish(user, data.get("score"))
+    if action == "convert_points":
+        return await service.convert_points_action(user, data.get("amount"))
     return {"ok": False, "error": "unknown action", "_status": 400}
 
 
