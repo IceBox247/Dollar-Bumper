@@ -844,8 +844,12 @@ function _waitAd(net,ms){ return new Promise(res=>{ const t0=Date.now();
   (function tick(){ if(_adReady(net)) return res(true); if(Date.now()-t0>ms) return res(false); setTimeout(tick,200); })(); }); }
 async function showAd(network){
   const ok=await _waitAd(network, 4500); if(!ok) throw 'noad';   // wait for the SDK to load
-  if(network==='adsgram') return _adsgram.show();
-  const fn=_monetagFn||window['show_'+_monetagZone]; return fn();
+  const p = network==='adsgram' ? _adsgram.show() : (_monetagFn||window['show_'+_monetagZone])();
+  // Never hang forever if the network stalls (e.g. a format isn't activated).
+  return Promise.race([
+    Promise.resolve(p),
+    new Promise((_,rej)=>setTimeout(()=>rej('timeout'), 40000)),
+  ]);
 }
 function maybeEntryAd(){
   try{ if(sessionStorage.getItem('db_entry_ad')) return; sessionStorage.setItem('db_entry_ad','1'); }catch(e){}
