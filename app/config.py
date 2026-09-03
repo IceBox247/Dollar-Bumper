@@ -76,9 +76,9 @@ class Settings(BaseSettings):
     game_daily_plays: int = 5             # paid arcade rounds per day (anti-farm)
     game_ads_per_play: int = 1            # ads a user must watch before each round
 
-    # Ad network IDs (leave blank to disable that network).
+    # Ad network IDs (override via env; leave blank to disable that network).
     adsgram_block_id: str = ""            # Adsgram Block ID (e.g. "int-12345")
-    monetag_zone_id: str = ""             # Monetag Zone/Tag id (digits)
+    monetag_zone_id: str = "11716272"     # Monetag Zone id (from show_<id>())
 
     # Storage
     database_url: str = "sqlite+aiosqlite:///data/dollar_bumper.db"
