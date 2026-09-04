@@ -699,16 +699,20 @@ function renderTasks(tasks){
 }
 
 // Fetch tasks and update the cache; optionally repaint. Returns true on success.
+let _tasksAt=0;
 async function refreshTasks(paint){
   const d = await api('tasks');
-  if(d.ok && d.tasks){ tasksCacheSet(d.tasks); if(paint) renderTasks(d.tasks); return true; }
+  if(d.ok && d.tasks){ tasksCacheSet(d.tasks); _tasksAt=Date.now(); if(paint) renderTasks(d.tasks); return true; }
   return false;
 }
 
-async function loadTasks(){
+async function loadTasks(force){
   const box=document.getElementById('tasksList');
   const cached = tasksCacheGet();
   if(cached){ renderTasks(cached); }        // instant paint from last-known list
+  // Skip the network refetch if the cache is still fresh (unless forced, e.g.
+  // right after a claim) — avoids a function+DB hit on every Tasks tab switch.
+  if(!force && cached && Date.now()-_tasksAt<25000) return;
   const ok = await refreshTasks(true);
   if(!ok && !cached){
     box.innerHTML='<div class="empty"><div class="big">📡</div>Couldn\'t load tasks.'+
@@ -722,7 +726,7 @@ function openTask(url,id,visit){
 async function claimTask(id){
   const b=document.getElementById('v'+id); b.disabled=true; b.innerHTML='<span class="spin"></span> Claiming…';
   const d = await api('verify',{campaign_id:id});
-  if(d.ok){ haptic('success'); clearOpened(id); toast('✅ '+usdt(d.reward)+' claimed!'); await loadHome(); await loadTasks(); }
+  if(d.ok){ haptic('success'); clearOpened(id); toast('✅ '+usdt(d.reward)+' claimed!'); await loadHome(); await loadTasks(true); }
   else if(d.need_socials){ haptic('error'); toast('🔗 Add a social handle first to unlock this task.');
     b.disabled=false; b.innerHTML='✅ Claim'; openSocials(); }
   else{ haptic('error'); toast(d.error||'Could not claim'); b.disabled=false; b.innerHTML='✅ Claim'; }
@@ -772,7 +776,7 @@ function go(tab){
   });
   document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
   if(tab==='tasks') loadTasks();
-  if(tab==='ranks'){ lbData=null; loadLeaderboard(); }
+  if(tab==='ranks'){ if(lbData && Date.now()-lbAt<60000){ renderLb(); } else { loadLeaderboard(); } }
   if(tab==='advertise') advHome();
   if(tab==='earn') loadEarn();
   window.scrollTo(0,0);
@@ -861,12 +865,12 @@ async function advVerify(){
 }
 
 /* ---- Leaderboard ---- */
-let lbData=null, lbMode='ref';
+let lbData=null, lbMode='ref', lbAt=0;
 async function loadLeaderboard(){
   const box=document.getElementById('lbList');
   const d=await api('leaderboard');
-  if(!d.ok){ box.innerHTML='<div class="empty">Could not load leaderboard.</div>'; return; }
-  lbData=d; renderLb();
+  if(!d.ok){ if(!lbData) box.innerHTML='<div class="empty">Could not load leaderboard.</div>'; return; }
+  lbData=d; lbAt=Date.now(); renderLb();
 }
 function lbTab(m){ lbMode=m;
   document.getElementById('segRef').classList.toggle('on',m==='ref');
