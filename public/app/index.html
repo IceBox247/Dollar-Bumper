@@ -972,13 +972,21 @@ function _adReady(net){ return net==='adsgram' ? !!_adsgram : !!(_monetagFn||(_m
 function _waitAd(net,ms){ return new Promise(res=>{ const t0=Date.now();
   (function tick(){ if(_adReady(net)) return res(true); if(Date.now()-t0>ms) return res(false); setTimeout(tick,200); })(); }); }
 async function showAd(network){
-  const ok=await _waitAd(network, 4500); if(!ok) throw 'noad';   // wait for the SDK to load
-  const p = network==='adsgram' ? _adsgram.show() : (_monetagFn||window['show_'+_monetagZone])();
-  // Never hang forever if the network stalls (e.g. a Monetag format isn't
-  // activated in the dashboard — its promise then simply never resolves).
+  if(network==='monetag'){
+    // Canonical Monetag call: window.show_<zone>() returns a promise that
+    // resolves when the ad is watched and rejects on no-fill / early close.
+    const zone=_monetagZone||'11716272', fn=window['show_'+zone];
+    if(typeof fn!=='function'){
+      throw new Error('Monetag SDK not loaded (show_'+zone+' missing) — check the zone id / that libtl.com is reachable.');
+    }
+    return fn();   // no artificial timeout — let the real ad resolve/reject
+  }
+  // Adsgram
+  const ok=await _waitAd('adsgram', 4500); if(!ok) throw new Error('Adsgram not ready');
+  const p=_adsgram.show();
   return Promise.race([
     Promise.resolve(p),
-    new Promise((_,rej)=>setTimeout(()=>rej('timeout'), 20000)),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Adsgram timeout')), 40000)),
   ]);
 }
 function maybeEntryAd(){
@@ -1036,7 +1044,10 @@ async function howtoProceed(){
 }
 async function _doWatchAd(net){
   toast('Loading ad…');
-  try{ await showAd(net); }catch(e){ toast('Ad not available right now — try again.'); return; }
+  try{ await showAd(net); }
+  catch(e){ haptic('error'); const m=(e&&e.message)?e.message:(typeof e==='string'?e:'unavailable');
+    // Show the REAL reason so silent failures become diagnosable on-device.
+    toast('⚠️ Ad: '+m); console.warn('showAd('+net+') failed:',e); return; }
   const d=await api('ad_reward',{network:net});
   if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); loadEarn(); }
   else { haptic('error'); toast(d.message||'Could not claim'); }
