@@ -32,21 +32,26 @@ async def _referral_of(u: WebAppUser) -> int | None:
 
 async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
     user = await get_or_create_user(u.id, u.username, u.first_name, await _referral_of(u))
+    # Reuse the row get_or_create_user already loaded instead of re-SELECTing it.
+    row = user
 
-    # Record device IP once, and flag if another account already used this IP.
-    async with Session() as s:
-        row = await s.get(User, u.id)
-        if ip and not row.signup_ip:
-            row.signup_ip = ip[:64]
-            dup = await s.scalar(
-                select(func.count(User.id)).where(
-                    User.signup_ip == ip[:64], User.id != u.id, User.is_banned.is_(False)
+    # Record device IP only on the FIRST open (signup_ip still blank). For every
+    # returning user this whole block is skipped — no extra round trip.
+    if ip and not row.signup_ip:
+        async with Session() as s:
+            fresh = await s.get(User, u.id)
+            if fresh is not None and not fresh.signup_ip:
+                fresh.signup_ip = ip[:64]
+                dup = await s.scalar(
+                    select(func.count(User.id)).where(
+                        User.signup_ip == ip[:64], User.id != u.id, User.is_banned.is_(False)
+                    )
                 )
-            )
-            if dup and int(dup) >= settings.ip_flag_threshold:
-                row.flagged = True
-            await s.commit()
-        device_ok = not row.flagged
+                if dup and int(dup) >= settings.ip_flag_threshold:
+                    fresh.flagged = True
+                await s.commit()
+                row = fresh  # use the updated row for the rest of the payload
+    device_ok = not row.flagged
 
     async with Session() as s:
         invites = await s.scalar(
@@ -144,7 +149,29 @@ def _name(first, username) -> str:
     return (first or (("@" + username) if username else None) or "Bumper")[:24]
 
 
+_LB_CACHE: dict = {"at": 0.0, "ref": None, "wd": None}
+_LB_TTL = 60.0  # seconds; the board is identical for all users, so cache it
+
+
 async def leaderboard(u: WebAppUser) -> dict:
+    import time as _time
+
+    # Serve the shared board from a short-lived module cache; only the per-user
+    # "me" flag is computed fresh. Turns 2 heavy GROUP BY queries per Ranks open
+    # into (at most) 2 per _LB_TTL for the whole warm instance.
+    if _LB_CACHE["ref"] is not None and _time.monotonic() - _LB_CACHE["at"] < _LB_TTL:
+        ref_rows, wd_rows = _LB_CACHE["ref"], _LB_CACHE["wd"]
+        return {
+            "ok": True,
+            "top_referrers": [
+                {"name": r[1], "invites": r[2], "earned": r[3], "me": r[0] == u.id}
+                for r in ref_rows
+            ],
+            "top_withdrawals": [
+                {"name": r[1], "total": r[2], "me": r[0] == u.id} for r in wd_rows
+            ],
+        }
+
     admin_ids = settings.admin_ids  # keep the project's own accounts off the board
     async with Session() as s:
         # Top referrers — by number of valid (credited) invites.
@@ -181,16 +208,19 @@ async def leaderboard(u: WebAppUser) -> dict:
             wd_stmt = wd_stmt.where(User.id.not_in(admin_ids))
         wd_rows = (await s.execute(wd_stmt)).all()
 
+    # Normalize to (id, name, ...) tuples and cache the shared board.
+    ref_norm = [(r[0], _name(r[1], r[2]), int(r[3] or 0), _q(r[4])) for r in ref_rows]
+    wd_norm = [(r[0], _name(r[1], r[2]), _q(r[3])) for r in wd_rows]
+    _LB_CACHE.update(at=__import__("time").monotonic(), ref=ref_norm, wd=wd_norm)
+
     return {
         "ok": True,
         "top_referrers": [
-            {"name": _name(r[1], r[2]), "invites": int(r[3] or 0),
-             "earned": _q(r[4]), "me": r[0] == u.id}
-            for r in ref_rows
+            {"name": r[1], "invites": r[2], "earned": r[3], "me": r[0] == u.id}
+            for r in ref_norm
         ],
         "top_withdrawals": [
-            {"name": _name(r[1], r[2]), "total": _q(r[3]), "me": r[0] == u.id}
-            for r in wd_rows
+            {"name": r[1], "total": r[2], "me": r[0] == u.id} for r in wd_norm
         ],
     }
 

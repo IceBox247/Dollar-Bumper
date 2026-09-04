@@ -10,9 +10,17 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Process-global throttle for the opportunistic payout confirmation. Module
+# globals persist across warm invocations, so this bounds the on-chain work to
+# at most one sweep per _CONFIRM_EVERY seconds for the WHOLE warm instance —
+# instead of firing (and doing up to 5 BSC RPC calls) on every user's home load.
+_last_confirm = 0.0
+_CONFIRM_EVERY = 30.0  # seconds
 
 
 async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
@@ -30,14 +38,21 @@ async def _dispatch(action: str, data: dict, ip: str | None = None) -> dict:
     bot = get_bot()
 
     if action == "home":
-        # Opportunistically finalize any broadcast payouts (cheap no-op when
-        # none are pending) so "Paid ✅" lands without waiting for the cron.
-        try:
-            from app.services.payouts import confirm_payouts
+        # Opportunistically finalize any broadcast payouts so "Paid ✅" lands
+        # without waiting for the daily cron — but throttled process-globally so
+        # it runs at most once per _CONFIRM_EVERY seconds no matter how many
+        # users hit home. (Trade-off: a just-paid tx may show "Paid" up to
+        # ~30s later than before; the cron is the backstop.)
+        global _last_confirm
+        now = time.monotonic()
+        if now - _last_confirm >= _CONFIRM_EVERY:
+            _last_confirm = now
+            try:
+                from app.services.payouts import confirm_payouts
 
-            await confirm_payouts(bot, limit=5)
-        except Exception as e:  # noqa: BLE001
-            print("opportunistic confirm error:", repr(e))
+                await confirm_payouts(bot, limit=5)
+            except Exception as e:  # noqa: BLE001
+                print("opportunistic confirm error:", repr(e))
         return await service.home_state(user, bot, ip)
     if action == "channels":
         return await service.channels_status(user, bot)
