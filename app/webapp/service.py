@@ -7,14 +7,14 @@ from aiogram import Bot
 from sqlalchemy import func, select
 
 from app.config import settings
-from app.constants import WithdrawalStatus
+from app.constants import CampaignStatus, WithdrawalStatus
 from app.db.base import Session
-from app.db.models import Campaign, User, Withdrawal
+from app.db.models import Announcement, Campaign, User, Withdrawal
 from app.services.campaigns import active_campaigns_for
 from app.services.earning import complete_task, get_or_create_user
 from app.services.membership import is_member, member_status
 from app.services.payouts import request_withdrawal
-from app.utils.format import q, usdt
+from app.utils.format import mask_wallet, q, usdt
 from app.utils.validators import is_valid_evm_address, to_checksum
 from app.webapp.auth import WebAppUser
 
@@ -92,6 +92,32 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
     used_mt = row.ad_count_monetag if row.ad_day == today else 0
     game_plays_used = row.game_plays if row.game_day == today else 0
 
+    # Dashboard ticker: admin announcements + live activity.
+    async with Session() as s:
+        anns = (await s.scalars(
+            select(Announcement).order_by(Announcement.id.desc()).limit(6)
+        )).all()
+        task_count = await s.scalar(
+            select(func.count(Campaign.id)).where(
+                Campaign.status == CampaignStatus.ACTIVE.value
+            )
+        )
+        last_paid = await s.scalar(
+            select(Withdrawal).where(Withdrawal.status == WithdrawalStatus.PAID.value)
+            .order_by(Withdrawal.id.desc())
+        )
+    notices = [a.text for a in anns]
+    tc = int(task_count or 0)
+    if tc:
+        notices.append(f"🎁 {tc} earn task{'s' if tc != 1 else ''} available now")
+    notices.append(f"👥 Invite friends — earn {usdt(settings.referral_reward)} each")
+    if last_paid:
+        notices.append(
+            f"💸 {mask_wallet(last_paid.wallet_address)} just withdrew {usdt(last_paid.amount)}"
+        )
+    if not notices:
+        notices.append("🚀 Welcome to Dollar Bumper — start earning real USDT!")
+
     return {
         "ok": True,
         "user": {"id": user.id, "first_name": user.first_name, "username": user.username},
@@ -112,6 +138,7 @@ async def home_state(u: WebAppUser, bot: Bot, ip: str | None = None) -> dict:
             "linked": int(row.social_reward_count or 0),
             "required_for_offsite": bool(settings.require_social_for_offsite),
         },
+        "notices": notices,
         "referral_link": (
             f"https://t.me/{_bot_username}?start={user.id}" if _bot_username else ""
         ),

@@ -204,6 +204,13 @@
   .howrow .hi{font-size:20px;flex-shrink:0;line-height:1.3}
   #blitz{padding:0}
   #blitzCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .ticker{display:flex;align-items:center;gap:10px;background:rgba(40,224,122,.08);
+    border:1px solid rgba(40,224,122,.22);border-radius:14px;padding:11px 14px;margin-bottom:14px;overflow:hidden}
+  .ticker .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;
+    box-shadow:0 0 8px var(--green);animation:blink 1.6s infinite}
+  @keyframes blink{50%{opacity:.35}}
+  .ticker .tk{font-size:12.5px;font-weight:700;color:#d7f5e4;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;transition:opacity .3s}
 </style>
 </head>
 <body>
@@ -216,6 +223,9 @@
 
   <!-- HOME -->
   <div id="tab-home" class="fade">
+    <div class="ticker" id="ticker" style="display:none">
+      <span class="dot"></span><span class="tk" id="tickerText"></span>
+    </div>
     <div class="hero">
       <div class="lbl">Available Balance</div>
       <div class="amt" id="balance">—<small> USDT</small></div>
@@ -525,6 +535,20 @@ function applyHome(d){
       pl.textContent = left>0 ? ('🎮 '+left+' free round'+(left===1?'':'s')+' left today') : '⏳ No rounds left — back tomorrow!'; }
     loadAds(d.game.ads); }
   renderSocials(d);
+  setupTicker(d.notices || []);
+}
+
+let _tkIdx=0, _tkTimer=null;
+function setupTicker(notices){
+  const bar=document.getElementById('ticker'), t=document.getElementById('tickerText');
+  if(!bar) return;
+  if(!notices.length){ bar.style.display='none'; return; }
+  bar.style.display='flex'; clearInterval(_tkTimer); _tkIdx=0; t.textContent=notices[0];
+  if(notices.length>1){
+    _tkTimer=setInterval(()=>{ t.style.opacity=0;
+      setTimeout(()=>{ _tkIdx=(_tkIdx+1)%notices.length; t.textContent=notices[_tkIdx]; t.style.opacity=1; },300);
+    },3500);
+  }
 }
 
 async function loadHome(){

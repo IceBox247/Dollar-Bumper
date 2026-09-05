@@ -130,6 +130,15 @@ class ProcessedTx(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class Announcement(Base):
+    """Admin-set ticker messages shown on the Mini App dashboard."""
+    __tablename__ = "announcements"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class FSMRecord(Base):
     """Persisted FSM state + data so multi-step flows survive serverless
     invocations (no in-memory storage between requests)."""

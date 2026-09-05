@@ -292,6 +292,61 @@ def _is_telegram_link(url: str) -> bool:
     return bool(re.search(r"(?:https?://)?(?:t|telegram)\.me/", u))
 
 
+@router.message(Command("announce"))
+async def announce(message: Message, command: CommandObject) -> None:
+    """Add a message to the app dashboard ticker. /announce <text>"""
+    if not _is_admin(message.from_user.id):
+        return
+    text = (command.args or "").strip()
+    if not text:
+        await message.answer("Usage: /announce 🎉 New tasks added — go earn!")
+        return
+    from app.db.models import Announcement
+
+    async with Session() as s:
+        s.add(Announcement(text=text[:300]))
+        await s.commit()
+    await message.answer("📣 Added to the app ticker. Use /announces to review.")
+
+
+@router.message(Command("announces"))
+async def announces(message: Message) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    from app.db.models import Announcement
+
+    async with Session() as s:
+        rows = (await s.scalars(select(Announcement).order_by(Announcement.id.desc()))).all()
+    if not rows:
+        await message.answer("No announcements. Add one with /announce.")
+        return
+    lines = ["📣 <b>Announcements</b>:"]
+    for a in rows[:30]:
+        lines.append(f"#{a.id} · {a.text}")
+    lines.append("\nRemove with /delannounce &lt;id&gt;")
+    await message.answer("\n".join(lines))
+
+
+@router.message(Command("delannounce"))
+async def delannounce(message: Message, command: CommandObject) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+    m = re.search(r"\d+", command.args or "")
+    if not m:
+        await message.answer("Usage: /delannounce 3")
+        return
+    from app.db.models import Announcement
+
+    async with Session() as s:
+        a = await s.get(Announcement, int(m.group()))
+        if a is None:
+            await message.answer("Not found.")
+            return
+        await s.delete(a)
+        await s.commit()
+    await message.answer("🗑️ Removed from ticker.")
+
+
 @router.message(Command("addtasks"))
 async def addtasks(message: Message, command: CommandObject) -> None:
     """Bulk-add earn tasks. Paste one link per line after the command.
