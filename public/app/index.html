@@ -341,7 +341,7 @@
     <div class="sec">🎮 Play &amp; Earn</div>
     <div class="card" style="border-color:var(--line2)">
       <h3>🎡 Lucky Spin <span class="reward" id="spinMax">win Bumps</span></h3>
-      <p>Free spin every <b id="spinCd">12</b>h. Watch a quick ad, then spin to win Bumps!</p>
+      <p>Free spin every <b id="spinCd">12</b>h. Spin to win Bumps — a quick ad plays right after!</p>
       <div id="spinWheel" style="display:flex;gap:8px;justify-content:center;margin:16px 0">
         <div class="spinbox" id="sb0">?</div><div class="spinbox on" id="sb1">?</div><div class="spinbox" id="sb2">?</div>
       </div>
@@ -1002,15 +1002,13 @@ function maybeEntryAd(){
 async function doSpin(){
   const btn=document.getElementById('spinBtn'), hint=document.getElementById('spinHint');
   if(STATE&&STATE.game&&!STATE.game.spin_ready){ toast('⏳ Come back for your next free spin.'); return; }
-  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Loading ad…';
-  const net=adAvailable();
-  if(net){ try{ await showAd(net); }catch(e){} }   // watch an ad before the spin
-  btn.innerHTML='<span class="spin"></span> Spinning…'; animateSpin();
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Spinning…'; animateSpin();
   const d=await api('spin');
   setTimeout(async()=>{
     btn.disabled=false; btn.innerHTML='⚡ Spin Now';
     if(d.ok){ haptic('success'); ['sb0','sb1','sb2'].forEach(id=>{const b=document.getElementById(id); if(b)b.textContent=d.reward;});
-      toast('🎉 You won '+d.reward+' Bumps!'); if(hint) hint.textContent='Next free spin in '+(STATE&&STATE.game?STATE.game.spin_cooldown_hours:12)+'h.'; await loadHome(); }
+      toast('🎉 You won '+d.reward+' Bumps!'); if(hint) hint.textContent='Next free spin in '+(STATE&&STATE.game?STATE.game.spin_cooldown_hours:12)+'h.'; await loadHome();
+      const net=adAvailable(); if(net){ try{ await showAd(net); }catch(e){} } }   // spin first, then the ad auto-plays
     else { haptic('error'); toast(d.message||'Try again later'); if(hint) hint.textContent=d.message||''; }
   }, 900);
 }
@@ -1057,24 +1055,27 @@ async function _doWatchAd(net){
   else { haptic('error'); toast(d.message||'Could not claim'); }
 }
 
-/* ---- Arcade games (shared gate: daily cap + required ad) ---- */
+/* ---- Arcade games (shared gate: daily cap only — ads play AFTER the round) ---- */
 let _gameRunning=false;
 async function _gameGate(){
   if(_gameRunning) return false;
   const g=STATE&&STATE.game;
   if(g){ const left=(g.game_daily_plays||5)-(g.game_plays_used||0);
     if(left<=0){ toast('⏳ No game rounds left today — come back tomorrow!'); return false; } }
-  // Must watch the required ad(s) before playing (only when ads are set up).
-  const need=(g&&g.game_ads_per_play)||1, net=adAvailable();
-  if(net){ for(let i=0;i<need;i++){ toast('📺 Ad '+(i+1)+' of '+need+'…');
-    try{ await showAd(net); }catch(e){ toast('Please watch the ad to play.'); return false; } } }
-  return true;
+  return true;   // play first — the ad auto-plays once the round is over
+}
+// Auto-play the required ad(s) after a round completes (only when ads are set up).
+async function _playGameAds(){
+  const g=STATE&&STATE.game; const need=(g&&g.game_ads_per_play)||1, net=adAvailable();
+  if(!net) return;
+  for(let i=0;i<need;i++){ try{ await showAd(net); }catch(e){ break; } }
 }
 async function finishGame(score,ic){
   toast('Round over! '+(ic||'💎')+' '+score);
   const d=await api('game_finish',{score:score});
   if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); }
   else { toast(d.message||'Try again'); }
+  await _playGameAds();   // game first, then the ad auto-plays
 }
 
 /* ---- Bumper Blitz (tap game) ---- */
