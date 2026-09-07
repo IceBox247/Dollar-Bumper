@@ -1084,18 +1084,23 @@ async function _doWatchAd(net){
 /* ---- Arcade games (shared gate: daily cap + required ad) ---- */
 let _gameRunning=false;
 async function _gameGate(){
+  // Pre-game: only check the daily cap. The reward ad now plays AFTER the round
+  // (see finishGame) — players who've just earned a score are far more willing
+  // to watch to claim it, so the game starts instantly on tap.
   if(_gameRunning) return false;
   const g=STATE&&STATE.game;
   if(g){ const left=(g.game_daily_plays||5)-(g.game_plays_used||0);
     if(left<=0){ toast('⏳ No game rounds left today — come back tomorrow!'); return false; } }
-  // Must watch the required ad(s) before playing (only when ads are set up).
-  const need=(g&&g.game_ads_per_play)||1, net=adAvailable();
-  if(net){ for(let i=0;i<need;i++){ toast('📺 Ad '+(i+1)+' of '+need+'…');
-    try{ await showAd(net); }catch(e){ toast('Please watch the ad to play.'); return false; } } }
   return true;
 }
 async function finishGame(score,ic){
-  toast('Round over! '+(ic||'💎')+' '+score);
+  toast('Round over! '+(ic||'💎')+' '+score+' — claiming…');
+  // Reward ad plays AFTER the round, right before crediting. If no ad network is
+  // set up, or it fails to fill / is closed early, we still credit — earning is
+  // never blocked by an ad problem.
+  const need=(STATE&&STATE.game&&STATE.game.game_ads_per_play)||1, net=adAvailable();
+  if(net){ for(let i=0;i<need;i++){ if(need>1) toast('📺 Ad '+(i+1)+' of '+need+'…');
+    try{ await showAd(net); }catch(e){ console.warn('post-game ad failed:',e); break; } } }
   const d=await api('game_finish',{score:score});
   if(d.ok){ haptic('success'); toast('🎉 +'+d.reward+' Bumps!'); await loadHome(); }
   else { toast(d.message||'Try again'); }
